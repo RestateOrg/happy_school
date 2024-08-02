@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "746962281225",
+    "project_id": "happyschool-99f85",
+    "storage_bucket": "happyschool-99f85.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:746962281225:android:521678414fcc9aaf5b29d8",
+        "android_client_info": {
+          "package_name": "com.example.happy_school"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVAjc6KTZYLu2QIIggQJKccGiNZSUNCHs"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
