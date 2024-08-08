@@ -10,6 +10,10 @@ class Adminhome extends StatefulWidget {
 class _AdminhomeState extends State<Adminhome> {
   @override
   Widget build(BuildContext context) {
-    return const Placeholder();
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(),
+      body: Container(),
+    );
   }
 }
