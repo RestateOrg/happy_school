@@ -13,7 +13,11 @@ class _UserhomeState extends State<Userhome> {
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(),
-      body: Container(),
+      body: SingleChildScrollView(
+        child: Column(
+          children: [],
+        ),
+      ),
     );
   }
 }

@@ -237,7 +237,10 @@ class _AdminhomeState extends State<Adminhome> {
       return;
     }
 
-    final modulesCollection = FirebaseFirestore.instance.collection(coursename);
+    final modulesCollection = FirebaseFirestore.instance
+        .collection("course")
+        .doc("course")
+        .collection(coursename);
 
     try {
       for (var module in modules.entries) {
