@@ -37,9 +37,75 @@ class _UserhomeState extends State<Userhome> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
     return Scaffold(
       backgroundColor: Colors.white,
-      appBar: AppBar(),
+      appBar: PreferredSize(
+        preferredSize: const Size.fromHeight(70.0),
+        child: AppBar(
+          backgroundColor: Colors.white,
+          title: Padding(
+            padding: EdgeInsets.only(top: 10),
+            child: Row(
+              children: [
+                Column(
+                  children: [
+                    Text(
+                      "welcome back,",
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 15,
+                      ),
+                    ),
+                    Text(
+                      "Rajabrahmam",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                Spacer(),
+                Container(
+                  width: 60,
+                ),
+                Spacer(),
+                Container(
+                  width: 50,
+                  height: 25,
+                  decoration: BoxDecoration(
+                    color: Color(0x2EFF6B00),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    children: [
+                      Image.asset(
+                        "assets/Images/coin.png",
+                      ),
+                      Text(
+                        "1.4k",
+                        style: TextStyle(
+                          color: Colors.orangeAccent,
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      )
+                    ],
+                  ),
+                ),
+                Spacer(),
+                FaIcon(
+                  FontAwesomeIcons.solidBell,
+                  size: 23,
+                ),
+                Spacer(),
+                Icon(Icons.person),
+                //Spacer()
+              ],
+            ),
+          ),
+        ),
+      ),
       body: PageView(
         controller: _pageController,
         physics: const AlwaysScrollableScrollPhysics(),
