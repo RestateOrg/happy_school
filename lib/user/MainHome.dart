@@ -58,7 +58,7 @@ class _MainhomeState extends State<Mainhome> {
         ),
         child: Center(
           child: Text(
-            course['courseName'].toString(), // Display the course name
+            course['courseName'].toString(),
             textAlign: TextAlign.center,
             style: TextStyle(
               fontWeight: FontWeight.bold,
