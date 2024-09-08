@@ -1,7 +1,9 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:happy_school/user/coursenames.dart';
 
 class Mainhome extends StatefulWidget {
   const Mainhome({super.key});
@@ -13,36 +15,75 @@ class Mainhome extends StatefulWidget {
 class _MainhomeState extends State<Mainhome> {
   final FocusNode _searchFocusNode = FocusNode();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
-  Future<List<Map<String, dynamic>>> getCourses() async {
-    List<Map<String, dynamic>> allCourses = [];
 
+  // Modified function to return a Future<List<String>> instead of void
+  Future<List<String>> getCourseDetailsInfo(String courseName) async {
     try {
-      QuerySnapshot subcollectionsSnapshot =
-          await _firestore.collection('course').get();
-      print('Subcollections snapshot: ${subcollectionsSnapshot.docs.length}');
+      final DocumentReference courseDocRef = _firestore
+          .collection('Content')
+          .doc('Content')
+          .collection('Courses')
+          .doc(courseName);
 
-      for (QueryDocumentSnapshot subcollectionDoc
-          in subcollectionsSnapshot.docs) {
-        String courseName = subcollectionDoc.id;
-        print(courseName);
+      final QuerySnapshot infoSnapshot =
+          await courseDocRef.collection('courseinfo').get();
 
-        allCourses.add({
-          'courseName': courseName,
-        });
+      // Extract and return course info data
+      if (infoSnapshot.docs.isNotEmpty) {
+        return infoSnapshot.docs.map((doc) {
+          Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+          return data['courseImage']?.toString() ?? ''; // Ensure it's a String
+        }).toList();
+      } else {
+        print('No course info found');
+        return [];
       }
-      print(allCourses.length);
-      return allCourses;
     } catch (e) {
-      print("Error fetching courses: $e");
+      print('Error fetching course details: $e');
       return [];
     }
   }
 
-  Widget _courseItems(Map<String, dynamic> course) {
+  Future<List<Map<String, dynamic>>> getCourses() async {
+    try {
+      final DocumentReference courseNamesRef = _firestore
+          .collection('Content')
+          .doc('Content')
+          .collection('courseNames')
+          .doc('courseNames');
+
+      final DocumentSnapshot courseNamesDoc = await courseNamesRef.get();
+
+      if (courseNamesDoc.exists) {
+        final Map<String, dynamic>? courseNamesData =
+            courseNamesDoc.data() as Map<String, dynamic>?;
+
+        if (courseNamesData != null && courseNamesData.isNotEmpty) {
+          return courseNamesData.entries.map((entry) {
+            return {
+              'courseId': entry.key,
+              'courseName': entry.value,
+            };
+          }).toList();
+        } else {
+          print('No course names found');
+          return [];
+        }
+      } else {
+        print('Course names document does not exist');
+        return [];
+      }
+    } catch (e) {
+      print('Error fetching course names: $e');
+      return [];
+    }
+  }
+
+  Widget _courseItems(Map<String, dynamic> course, String courseImage) {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Container(
-        width: 150,
+        width: 200,
         padding: const EdgeInsets.all(8.0),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -56,14 +97,70 @@ class _MainhomeState extends State<Mainhome> {
             ),
           ],
         ),
-        child: Center(
-          child: Text(
-            course['courseName'].toString(),
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
+        child: Column(
+          children: [
+            Container(
+              width: 200,
+              height: 90,
+              child: courseImage.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: courseImage,
+                      placeholder: (context, url) => Center(
+                        child: const CircularProgressIndicator(),
+                      ),
+                      key: UniqueKey(),
+                      errorWidget: (context, url, error) => const Icon(
+                        Icons.error,
+                        color: Colors.red,
+                      ),
+                    )
+                  : Center(child: Text(course['courseName'])),
             ),
-          ),
+            Container(
+              width: 200,
+              height: 26,
+              child: Row(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(left: 10),
+                    child: Text(
+                      course['courseName'],
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: GestureDetector(
+                      onTap: () async {
+                        // Your enroll action code here
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 5, horizontal: 10), // Adjusted padding
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(4),
+                          border: Border.all(color: Colors.orangeAccent),
+                          color: Colors.orange,
+                        ),
+                        child: Text(
+                          'Enroll',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -154,7 +251,7 @@ class _MainhomeState extends State<Mainhome> {
                                 ),
                               ),
                             ],
-                          )
+                          ),
                         ],
                       ),
                     ),
@@ -198,16 +295,52 @@ class _MainhomeState extends State<Mainhome> {
                   );
                 } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                   return Container(
-                    height: 120,
+                    height: 150,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: snapshot.data!.length,
                       itemBuilder: (context, index) {
-                        return GestureDetector(
-                          onTap: () async {
-                            // Handle course item tap here
+                        return FutureBuilder<List<String>>(
+                          future: getCourseDetailsInfo(
+                              snapshot.data![index]['courseName']),
+                          builder: (context, courseInfoSnapshot) {
+                            if (courseInfoSnapshot.connectionState ==
+                                ConnectionState.waiting) {
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            } else if (courseInfoSnapshot.hasError) {
+                              return Center(
+                                child:
+                                    Text('Error: ${courseInfoSnapshot.error}'),
+                              );
+                            } else if (courseInfoSnapshot.hasData) {
+                              return GestureDetector(
+                                onTap: () {
+                                  Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) => CoursesScreen(
+                                        courseName: snapshot.data![index]
+                                                ['courseName']
+                                            .toString(),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                child: _courseItems(
+                                  snapshot.data![index],
+                                  courseInfoSnapshot.data!.isNotEmpty
+                                      ? courseInfoSnapshot.data![0]
+                                      : '', // Use the first image as a sample
+                                ),
+                              );
+                            } else {
+                              return const Center(
+                                child: Text('No course info available.'),
+                              );
+                            }
                           },
-                          child: _courseItems(snapshot.data![index]),
                         );
                       },
                     ),

@@ -2,6 +2,9 @@ import 'dart:io';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:happy_school/utils/hexcolor.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 
@@ -15,6 +18,7 @@ class Adminhome extends StatefulWidget {
 class _AdminhomeState extends State<Adminhome> {
   Map<String, dynamic> modules = {};
   TextEditingController courseName = TextEditingController();
+  File? _image;
 
   @override
   void dispose() {
@@ -228,25 +232,79 @@ class _AdminhomeState extends State<Adminhome> {
     }
   }
 
+  Future<String> _getimageUrl() async {
+    if (_image != null) {
+      final fileExtension = _image?.path.split('.').last;
+      final uniqueFileName =
+          '${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
+      Reference storageReference =
+          FirebaseStorage.instance.ref().child('course/$uniqueFileName');
+      UploadTask uploadTask = storageReference.putFile(_image!);
+
+      try {
+        await uploadTask; // Ensure upload completes before getting URL
+        String imageURL = await storageReference.getDownloadURL();
+        return imageURL;
+      } catch (e) {
+        // Handle any errors during upload
+        print('Error uploading image: $e');
+        return ''; // Return empty string if upload fails
+      }
+    } else {
+      return ''; // No image to upload, return empty string
+    }
+  }
+
   Future<void> UploadtoFirebase() async {
     final coursename = courseName.text.trim();
-
+    String courseBannerURL = await _getimageUrl();
     // Validate the course name
     if (coursename.isEmpty) {
       print("Course name cannot be empty.");
       return;
     }
 
-    final modulesCollection = FirebaseFirestore.instance
-        .collection("course")
-        .doc("course")
-        .collection(coursename);
+    final courseRef = FirebaseFirestore.instance
+        .collection("Content")
+        .doc("Content")
+        .collection("Courses")
+        .doc(coursename); // Using course name as document ID
 
     try {
+      // Generate a unique course ID
+      final courseNamesRef = FirebaseFirestore.instance
+          .collection("Content")
+          .doc("Content")
+          .collection("courseNames")
+          .doc("courseNames");
+
+      final courseNamesDoc = await courseNamesRef.get();
+      final courseNamesData = courseNamesDoc.data() ?? {};
+
+      // Check for a unique course ID
+      String uniqueCourseId;
+      do {
+        uniqueCourseId = DateTime.now().millisecondsSinceEpoch.toString();
+      } while (courseNamesData.containsKey(uniqueCourseId));
+
+      // Add course name to the courseNames document
+      courseNamesData[uniqueCourseId] = coursename;
+      await courseNamesRef.set(courseNamesData);
+
+      // Set the course info
+      await courseRef.collection("courseinfo").doc("info").set({
+        "courseName": coursename,
+        "courseId": uniqueCourseId,
+        "courseImage": courseBannerURL,
+      });
+
       for (var module in modules.entries) {
         final moduleName = module.key;
         final moduleData = module.value;
         final moduleContent = moduleData['content'];
+
+        // Reference to the module document
+        final moduleRef = courseRef.collection("Modules").doc(moduleName);
 
         for (var content in moduleContent) {
           final fileName = content['fileName'];
@@ -259,9 +317,7 @@ class _AdminhomeState extends State<Adminhome> {
             final documentData = {
               fileName.toString(): youtubeUrl,
             };
-            await modulesCollection
-                .doc(moduleName)
-                .set(documentData, SetOptions(merge: true));
+            await moduleRef.set(documentData, SetOptions(merge: true));
           } else {
             // Handle other types of files
             final file = content['file'];
@@ -273,7 +329,7 @@ class _AdminhomeState extends State<Adminhome> {
             // Upload file to Firebase Storage with correct extension
             final storageRef = FirebaseStorage.instance
                 .ref()
-                .child('$moduleName/$fullFileName');
+                .child('Coursecontent/$coursename/$moduleName/$fullFileName');
             await storageRef.putFile(file);
 
             // Get the download URL of the uploaded file
@@ -283,9 +339,7 @@ class _AdminhomeState extends State<Adminhome> {
             final documentData = {
               fileName.toString(): downloadURL,
             };
-            await modulesCollection
-                .doc(moduleName)
-                .set(documentData, SetOptions(merge: true));
+            await moduleRef.set(documentData, SetOptions(merge: true));
           }
         }
       }
@@ -298,6 +352,7 @@ class _AdminhomeState extends State<Adminhome> {
 
   @override
   Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
@@ -320,6 +375,165 @@ class _AdminhomeState extends State<Adminhome> {
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          _image != null
+              ? Padding(
+                  padding: EdgeInsets.only(
+                    left: width * 0.04,
+                    top: width * 0.02,
+                    right: width * 0.04,
+                  ),
+                  child: Container(
+                      decoration: BoxDecoration(
+                        color: Color.fromARGB(255, 255, 249, 222),
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      height: width * 0.78,
+                      child: Stack(
+                        children: [
+                          Positioned(
+                              child: Container(
+                            decoration: BoxDecoration(
+                              color: HexColor('#2A2828'),
+                              borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(10),
+                                  topRight: Radius.circular(10)),
+                            ),
+                            height: width * 0.10,
+                            child: Stack(
+                              children: [
+                                Positioned(
+                                    top: width * 0.02,
+                                    left: width * 0.03,
+                                    child: Text("Course Banner",
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontFamily: 'Roboto',
+                                            fontWeight: FontWeight.w600))),
+                                Positioned(
+                                    right: width * 0.03,
+                                    top: width * 0.02,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        _pickImageFromGallery();
+                                      },
+                                      child: Text("Edit",
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontFamily: 'Roboto',
+                                              fontWeight: FontWeight.w500)),
+                                    )),
+                              ],
+                            ),
+                          )),
+                          Center(
+                            child: Padding(
+                              padding: EdgeInsets.only(top: width * 0.1),
+                              child: Container(
+                                width: width,
+                                child: Image.file(
+                                  _image!,
+                                  alignment: Alignment.center,
+                                ),
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                              bottom: width * 0.02,
+                              left: width * 0.02,
+                              child: GestureDetector(
+                                  onTap: () {
+                                    _pickImageFromCamera();
+                                  },
+                                  child: FaIcon(FontAwesomeIcons.camera,
+                                      size: width * 0.06)))
+                        ],
+                      )),
+                )
+              : Padding(
+                  padding: EdgeInsets.only(
+                    left: width * 0.04,
+                    top: width * 0.02,
+                    right: width * 0.04,
+                  ),
+                  child: Container(
+                      decoration: BoxDecoration(
+                        color: Color.fromARGB(255, 255, 249, 222),
+                        borderRadius: BorderRadius.circular(10.0),
+                      ),
+                      height: width * 0.78,
+                      child: Stack(
+                        children: [
+                          Positioned(
+                              child: Container(
+                            decoration: BoxDecoration(
+                              color: HexColor('#2A2828'),
+                              borderRadius: BorderRadius.only(
+                                  topLeft: Radius.circular(10),
+                                  topRight: Radius.circular(10)),
+                            ),
+                            height: width * 0.10,
+                            child: Stack(
+                              children: [
+                                Positioned(
+                                    top: width * 0.02,
+                                    left: width * 0.03,
+                                    child: Text("Course Banner",
+                                        style: TextStyle(
+                                            color: Colors.white,
+                                            fontFamily: 'Roboto',
+                                            fontWeight: FontWeight.w600))),
+                                Positioned(
+                                    right: width * 0.03,
+                                    top: width * 0.02,
+                                    child: GestureDetector(
+                                      onTap: () {
+                                        _pickImageFromGallery();
+                                      },
+                                      child: Text("Edit",
+                                          style: TextStyle(
+                                              color: Colors.white,
+                                              fontFamily: 'Roboto',
+                                              fontWeight: FontWeight.w500)),
+                                    )),
+                              ],
+                            ),
+                          )),
+                          Positioned(
+                              top: width * 0.35,
+                              left: width * 0.33,
+                              child: Column(
+                                children: [
+                                  GestureDetector(
+                                    onTap: () {
+                                      _pickImageFromGallery();
+                                    },
+                                    child: Image.asset(
+                                      'assets/Images/Addphoto2.png',
+                                      width: width * 0.13,
+                                      height: width * 0.13,
+                                    ),
+                                  ),
+                                  Text(
+                                    "Click to Add Photo",
+                                    style: TextStyle(
+                                      fontSize: width * 0.03,
+                                      color: Colors.black38,
+                                    ),
+                                  ),
+                                ],
+                              )),
+                          Positioned(
+                              bottom: width * 0.02,
+                              left: width * 0.02,
+                              child: GestureDetector(
+                                  onTap: () {
+                                    _pickImageFromCamera();
+                                  },
+                                  child: FaIcon(FontAwesomeIcons.camera,
+                                      size: width * 0.06)))
+                        ],
+                      )),
+                ),
           Padding(
             padding: const EdgeInsets.all(8.0),
             child: Container(
@@ -474,5 +688,21 @@ class _AdminhomeState extends State<Adminhome> {
         ],
       ),
     );
+  }
+
+  Future _pickImageFromGallery() async {
+    final pickedimage =
+        await ImagePicker().pickImage(source: ImageSource.gallery);
+    setState(() {
+      _image = File(pickedimage!.path);
+    });
+  }
+
+  Future _pickImageFromCamera() async {
+    final pickedimage =
+        await ImagePicker().pickImage(source: ImageSource.camera);
+    setState(() {
+      _image = File(pickedimage!.path);
+    });
   }
 }

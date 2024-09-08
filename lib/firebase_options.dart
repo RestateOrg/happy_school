@@ -65,4 +65,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'happyschool-99f85.appspot.com',
     iosBundleId: 'com.example.happySchool',
   );
+
 }
