@@ -49,9 +49,10 @@ class _UserhomeState extends State<Userhome> {
             child: Row(
               children: [
                 Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "welcome back,",
+                      "Hi,",
                       style: TextStyle(
                         color: Colors.grey,
                         fontSize: 15,
@@ -71,26 +72,29 @@ class _UserhomeState extends State<Userhome> {
                 ),
                 Spacer(),
                 Container(
-                  width: 50,
                   height: 25,
                   decoration: BoxDecoration(
                     color: Color(0x2EFF6B00),
-                    borderRadius: BorderRadius.circular(10),
+                    borderRadius: BorderRadius.circular(5),
                   ),
-                  child: Row(
-                    children: [
-                      Image.asset(
-                        "assets/Images/coin.png",
-                      ),
-                      Text(
-                        "1.4k",
-                        style: TextStyle(
-                          color: Colors.orangeAccent,
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
+                  child: Padding(
+                    padding: const EdgeInsets.only(
+                        left: 2.0, top: 2, bottom: 2, right: 4),
+                    child: Row(
+                      children: [
+                        Image.asset(
+                          "assets/Images/coin.png",
                         ),
-                      )
-                    ],
+                        Text(
+                          "1.4k",
+                          style: TextStyle(
+                            color: Colors.orangeAccent,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        )
+                      ],
+                    ),
                   ),
                 ),
                 Spacer(),

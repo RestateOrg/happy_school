@@ -60,7 +60,9 @@ class CoursesScreen extends StatelessWidget {
     final width = MediaQuery.of(context).size.width;
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
+        backgroundColor: Colors.orange,
         title: Text(courseName),
       ),
       body: FutureBuilder<Map<String, dynamic>>(
@@ -138,84 +140,105 @@ class CoursesScreen extends StatelessWidget {
                     child: Text(
                       "Modules",
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  SizedBox(
-                    height: 120,
-                    child: ListView.builder(
-                      scrollDirection: Axis.vertical,
-                      itemCount: modules.length, // Iterate over all modules
-                      itemBuilder: (context, index) {
-                        final module = modules[index];
-                        String vid =
-                            YoutubePlayer.convertUrlToId(module['vid']) ?? "";
-                        return GestureDetector(
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (context) => Modulescreen(
-                                  module: module, // Pass the whole module data
-                                  vid: vid,
-                                ),
-                              ),
-                            );
-                          },
-                          child: Padding(
-                            padding: const EdgeInsets.all(9.0),
-                            child: Container(
-                              width: width * 0.95,
-                              height: 40,
-                              padding: const EdgeInsets.all(8.0),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(10),
-                                boxShadow: const [
-                                  BoxShadow(
-                                    color: Colors.black12,
-                                    spreadRadius: 1,
-                                    blurRadius: 2,
-                                    offset: Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: Row(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.only(left: 10),
-                                    child: Text(
-                                      "Module ${index + 1}:",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                  const Spacer(),
-                                  Text(
-                                    module['moduleName'],
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Spacer(),
-                                  Padding(
-                                    padding: EdgeInsets.only(right: 10),
-                                    child: FaIcon(
-                                      FontAwesomeIcons.chevronDown,
-                                      color: Colors.orange,
-                                      size: 15,
-                                    ),
-                                  ),
-                                ],
+                  ListView.builder(
+                    shrinkWrap:
+                        true, // This ensures the ListView takes up only the necessary space
+                    physics:
+                        NeverScrollableScrollPhysics(), // Disables ListView's own scrolling
+                    itemCount: modules.length,
+                    itemBuilder: (context, index) {
+                      final module = modules[index];
+                      String vid =
+                          YoutubePlayer.convertUrlToId(module['vid']) ?? "";
+                      return GestureDetector(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => Modulescreen(
+                                module: module, // Pass the whole module data
+                                vid: vid,
                               ),
                             ),
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.only(
+                              top: 10, left: 10, right: 10),
+                          child: Container(
+                            width: width * 0.95,
+                            padding: const EdgeInsets.all(8.0),
+                            decoration: BoxDecoration(
+                                color: Color.fromARGB(9, 0, 0, 0),
+                                borderRadius: BorderRadius.circular(10),
+                                border: Border.all(
+                                  color: Color.fromARGB(9, 0, 0, 0),
+                                  width: 0.25,
+                                )),
+                            child: Column(
+                              children: [
+                                Padding(
+                                  padding: const EdgeInsets.only(top: 5.0),
+                                  child: Row(
+                                    children: [
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(left: 10),
+                                        child: Text(
+                                          "Module ${index + 1}: ",
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                      Text(
+                                        module['moduleName'],
+                                        style: TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Spacer(),
+                                      Padding(
+                                        padding: EdgeInsets.only(right: 10),
+                                        child: FaIcon(
+                                          FontAwesomeIcons.chevronDown,
+                                          color: Colors.orange,
+                                          size: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 8.0),
+                                  child: Row(
+                                    children: [
+                                      Padding(
+                                        padding:
+                                            const EdgeInsets.only(left: 13.0),
+                                        child: Text(
+                                          modules.length.toString() +
+                                              " Items  ",
+                                          style: TextStyle(
+                                              color: Colors.grey, fontSize: 12),
+                                        ),
+                                      ),
+                                      Icon(Icons.circle,
+                                          size: 5, color: Colors.grey),
+                                    ],
+                                  ),
+                                )
+                              ],
+                            ),
                           ),
-                        );
-                      },
-                    ),
+                        ),
+                      );
+                    },
                   ),
                 ],
               ),
@@ -226,5 +249,14 @@ class CoursesScreen extends StatelessWidget {
         },
       ),
     );
+  }
+
+  String titleCase(String text) {
+    if (text.isEmpty) return text;
+
+    return text
+        .split(' ')
+        .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
+        .join(' ');
   }
 }

@@ -5,6 +5,7 @@ import 'package:happy_school/admin/adminHome.dart';
 import 'package:happy_school/user/MainHome.dart';
 import 'package:happy_school/user/coursenames.dart';
 import 'package:happy_school/user/userHome.dart';
+import 'package:happy_school/utils/signIn.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -26,7 +27,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.amber),
         useMaterial3: true,
       ),
-      home: const Userhome(),
+      home: const LoginPage(),
     );
   }
 }

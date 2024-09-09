@@ -107,6 +107,7 @@ class _ModulescreenState extends State<Modulescreen> {
         .toList();
 
     return Scaffold(
+      backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(widget.module['moduleName'] ?? 'Module Details'),
       ),

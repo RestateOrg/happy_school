@@ -4,6 +4,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:happy_school/user/coursenames.dart';
+import 'package:happy_school/utils/hexcolor.dart';
 
 class Mainhome extends StatefulWidget {
   const Mainhome({super.key});
@@ -105,9 +106,7 @@ class _MainhomeState extends State<Mainhome> {
               child: courseImage.isNotEmpty
                   ? CachedNetworkImage(
                       imageUrl: courseImage,
-                      placeholder: (context, url) => Center(
-                        child: const CircularProgressIndicator(),
-                      ),
+                      placeholder: (context, url) => Center(),
                       key: UniqueKey(),
                       errorWidget: (context, url, error) => const Icon(
                         Icons.error,
@@ -142,9 +141,8 @@ class _MainhomeState extends State<Mainhome> {
                         padding: const EdgeInsets.symmetric(
                             vertical: 5, horizontal: 10), // Adjusted padding
                         decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(4),
-                          border: Border.all(color: Colors.orangeAccent),
-                          color: Colors.orange,
+                          borderRadius: BorderRadius.circular(20),
+                          color: HexColor("#FF6B00"),
                         ),
                         child: Text(
                           'Enroll',
@@ -306,9 +304,7 @@ class _MainhomeState extends State<Mainhome> {
                           builder: (context, courseInfoSnapshot) {
                             if (courseInfoSnapshot.connectionState ==
                                 ConnectionState.waiting) {
-                              return const Center(
-                                child: CircularProgressIndicator(),
-                              );
+                              return const Center();
                             } else if (courseInfoSnapshot.hasError) {
                               return Center(
                                 child:
