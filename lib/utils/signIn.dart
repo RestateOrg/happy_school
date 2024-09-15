@@ -102,7 +102,9 @@ class _LoginPageState extends State<LoginPage> {
                           Navigator.push(
                               context,
                               MaterialPageRoute(
-                                  builder: (context) => const Adminhome()));
+                                  builder: (context) => Adminhome(
+                                        initialSelectedIndex: 0,
+                                      )));
                         } else {
                           Navigator.push(
                               context,

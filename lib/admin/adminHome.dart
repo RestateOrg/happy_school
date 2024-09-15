@@ -1,352 +1,87 @@
-import 'dart:io';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:happy_school/utils/hexcolor.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:image_picker/image_picker.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:happy_school/admin/Adminhomescreen.dart';
+import 'package:happy_school/admin/Coursesandworkshops.dart';
+import 'package:happy_school/admin/Profile.dart';
+import 'package:happy_school/admin/schools.dart';
+import 'package:happy_school/admin/upload.dart';
+import 'package:happy_school/admin/uploadcourse.dart';
+import 'package:happy_school/utils/hexcolor.dart';
 
 class Adminhome extends StatefulWidget {
-  const Adminhome({super.key});
+  final int initialSelectedIndex;
+  const Adminhome({super.key, required this.initialSelectedIndex});
 
   @override
   State<Adminhome> createState() => _AdminhomeState();
 }
 
 class _AdminhomeState extends State<Adminhome> {
-  Map<String, dynamic> modules = {};
-  TextEditingController courseName = TextEditingController();
-  File? _image;
+  late PageController _pageController;
+  int _selectedIndex = 0;
+  late final int initialSelectedIndex;
+
+  @override
+  void initState() {
+    super.initState();
+    updateToken();
+    getnotificationpermission();
+    setState(() {
+      _selectedIndex = widget.initialSelectedIndex;
+    });
+    _pageController = PageController(initialPage: _selectedIndex);
+  }
 
   @override
   void dispose() {
-    courseName.dispose();
+    _pageController.dispose();
+    DefaultCacheManager().emptyCache();
     super.dispose();
   }
 
-  void _addContent(String moduleName, String contentType) {
-    if (contentType == 'PDF') {
-      final fileName = TextEditingController();
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Add PDF'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: fileName,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter file name',
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    FilePickerResult? result =
-                        await FilePicker.platform.pickFiles(
-                      type: FileType.custom,
-                      allowedExtensions: ['pdf'],
-                    );
-                    if (result != null) {
-                      File file = File(result.files.single.path!);
-                      // Handle the logic to add PDF content
-                      final pdfContent = {
-                        'fileName': fileName.text,
-                        'file': file,
-                      };
-                      modules[moduleName]['content'].add(pdfContent);
-                      Navigator.of(context).pop();
-                      setState(() {});
-                    }
-                  },
-                  child: const Text('Upload PDF'),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Cancel'),
-              ),
-            ],
-          );
-        },
-      );
-    }
-    if (contentType == 'Image') {
-      final fileName = TextEditingController();
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Add Image'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: fileName,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter file name',
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    FilePickerResult? result =
-                        await FilePicker.platform.pickFiles(
-                      type: FileType.image,
-                    );
-                    if (result != null) {
-                      File file = File(result.files.single.path!);
-                      // Handle the logic to add image content
-                      final imageContent = {
-                        'fileName': fileName.text,
-                        'file': file,
-                      };
-                      modules[moduleName]['content'].add(imageContent);
-                      Navigator.of(context).pop();
-                      setState(() {});
-                    }
-                  },
-                  child: const Text('Upload Image'),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Cancel'),
-              ),
-            ],
-          );
-        },
-      );
-    }
-    if (contentType == 'PPT') {
-      final fileName = TextEditingController();
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Add PPT'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: fileName,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter file name',
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () async {
-                    FilePickerResult? result =
-                        await FilePicker.platform.pickFiles(
-                      type: FileType.custom,
-                      allowedExtensions: ['pptx'],
-                    );
-                    if (result != null) {
-                      File file = File(result.files.single.path!);
-                      // Handle the logic to add PDF content
-                      final pdfContent = {
-                        'fileName': fileName.text,
-                        'file': file,
-                      };
-                      modules[moduleName]['content'].add(pdfContent);
-                      Navigator.of(context).pop();
-                      setState(() {});
-                    }
-                  },
-                  child: const Text('Upload PPT'),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Cancel'),
-              ),
-            ],
-          );
-        },
-      );
-    }
-    if (contentType == 'Video') {
-      final fileName = TextEditingController();
-      final youtubeUrl = TextEditingController();
-      showDialog(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Add Video'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: fileName,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter file name',
-                  ),
-                ),
-                TextField(
-                  controller: youtubeUrl,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter YouTube URL',
-                  ),
-                ),
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () {
-                  // Handle the logic to add video content
-                  final videoContent = {
-                    'fileName': fileName.text,
-                    'youtubeUrl': youtubeUrl.text,
-                    'type': "video",
-                  };
-                  modules[moduleName]['content'].add(videoContent);
-                  Navigator.of(context).pop();
-                  setState(() {});
-                },
-                child: const Text('Add'),
-              ),
-            ],
-          );
-        },
-      );
-    }
+  void _onItemTapped(int index) {
+    _pageController.jumpToPage(index);
   }
 
-  Future<String> _getimageUrl() async {
-    if (_image != null) {
-      final fileExtension = _image?.path.split('.').last;
-      final uniqueFileName =
-          '${DateTime.now().millisecondsSinceEpoch}.$fileExtension';
-      Reference storageReference =
-          FirebaseStorage.instance.ref().child('course/$uniqueFileName');
-      UploadTask uploadTask = storageReference.putFile(_image!);
-
-      try {
-        await uploadTask; // Ensure upload completes before getting URL
-        String imageURL = await storageReference.getDownloadURL();
-        return imageURL;
-      } catch (e) {
-        // Handle any errors during upload
-        print('Error uploading image: $e');
-        return ''; // Return empty string if upload fails
-      }
-    } else {
-      return ''; // No image to upload, return empty string
-    }
+  Future<void> getnotificationpermission() async {
+    FirebaseMessaging messaging = FirebaseMessaging.instance;
+    NotificationSettings settings = await messaging.requestPermission(
+      alert: true,
+      announcement: true,
+      badge: true,
+      carPlay: false,
+      criticalAlert: false,
+      provisional: false,
+      sound: true,
+    );
   }
 
-  Future<void> UploadtoFirebase() async {
-    final coursename = courseName.text.trim();
-    String courseBannerURL = await _getimageUrl();
-    // Validate the course name
-    if (coursename.isEmpty) {
-      print("Course name cannot be empty.");
-      return;
-    }
+  Future<void> updateToken() async {
+    var fcmToken = await FirebaseMessaging.instance.getToken();
+    var user = FirebaseAuth.instance.currentUser;
 
-    final courseRef = FirebaseFirestore.instance
-        .collection("Content")
-        .doc("Content")
-        .collection("Courses")
-        .doc(coursename); // Using course name as document ID
+    if (user != null) {
+      final email = user.email;
+      var token = await FirebaseFirestore.instance
+          .collection('fcmTokens')
+          .doc(email)
+          .get();
 
-    try {
-      // Generate a unique course ID
-      final courseNamesRef = FirebaseFirestore.instance
-          .collection("Content")
-          .doc("Content")
-          .collection("courseNames")
-          .doc("courseNames");
-
-      final courseNamesDoc = await courseNamesRef.get();
-      final courseNamesData = courseNamesDoc.data() ?? {};
-
-      // Check for a unique course ID
-      String uniqueCourseId;
-      do {
-        uniqueCourseId = DateTime.now().millisecondsSinceEpoch.toString();
-      } while (courseNamesData.containsKey(uniqueCourseId));
-
-      // Add course name to the courseNames document
-      courseNamesData[uniqueCourseId] = coursename;
-      await courseNamesRef.set(courseNamesData);
-
-      // Set the course info
-      await courseRef.collection("courseinfo").doc("info").set({
-        "courseName": coursename,
-        "courseId": uniqueCourseId,
-        "courseImage": courseBannerURL,
-      });
-
-      for (var module in modules.entries) {
-        final moduleName = module.key;
-        final moduleData = module.value;
-        final moduleContent = moduleData['content'];
-
-        // Reference to the module document
-        final moduleRef = courseRef.collection("Modules").doc(moduleName);
-
-        for (var content in moduleContent) {
-          final fileName = content['fileName'];
-
-          if (content.containsKey('type') && content['type'] == 'video') {
-            // Handle video content with YouTube URL
-            final youtubeUrl = content['youtubeUrl'];
-
-            // Create a document in Firestore with video details
-            final documentData = {
-              fileName.toString(): youtubeUrl,
-            };
-            await moduleRef.set(documentData, SetOptions(merge: true));
-          } else {
-            // Handle other types of files
-            final file = content['file'];
-
-            // Extract the file extension from the path
-            final fileExtension = file.path.split('.').last;
-            final fullFileName = '$fileName.$fileExtension';
-
-            // Upload file to Firebase Storage with correct extension
-            final storageRef = FirebaseStorage.instance
-                .ref()
-                .child('Coursecontent/$coursename/$moduleName/$fullFileName');
-            await storageRef.putFile(file);
-
-            // Get the download URL of the uploaded file
-            final downloadURL = await storageRef.getDownloadURL();
-
-            // Create a document in Firestore with the file details
-            final documentData = {
-              fileName.toString(): downloadURL,
-            };
-            await moduleRef.set(documentData, SetOptions(merge: true));
-          }
-        }
+      if (token.exists) {
+        await FirebaseFirestore.instance
+            .collection('fcmTokens')
+            .doc(email)
+            .update({'token': fcmToken});
+      } else {
+        await FirebaseFirestore.instance
+            .collection('fcmTokens')
+            .doc(email)
+            .set({'token': fcmToken});
       }
-
-      print("Files uploaded successfully.");
-    } catch (e) {
-      print("Failed to upload files: $e");
     }
   }
 
@@ -354,355 +89,322 @@ class _AdminhomeState extends State<Adminhome> {
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: Color.fromARGB(255, 255, 254, 248),
       appBar: AppBar(
-        title: const Text("Upload New Course"),
-      ),
-      bottomNavigationBar: GestureDetector(
-        onTap: () {
-          UploadtoFirebase();
-        },
-        child: Container(
-          height: 60,
-          decoration: BoxDecoration(color: Colors.orange),
-          child: Center(
-              child: Text(
-            "Upload",
-            style: TextStyle(color: Colors.white, fontSize: 18),
-          )),
-        ),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _image != null
-              ? Padding(
-                  padding: EdgeInsets.only(
-                    left: width * 0.04,
-                    top: width * 0.02,
-                    right: width * 0.04,
-                  ),
-                  child: Container(
-                      decoration: BoxDecoration(
-                        color: Color.fromARGB(255, 255, 249, 222),
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      height: width * 0.78,
-                      child: Stack(
-                        children: [
-                          Positioned(
-                              child: Container(
-                            decoration: BoxDecoration(
-                              color: HexColor('#2A2828'),
-                              borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(10),
-                                  topRight: Radius.circular(10)),
-                            ),
-                            height: width * 0.10,
-                            child: Stack(
-                              children: [
-                                Positioned(
-                                    top: width * 0.02,
-                                    left: width * 0.03,
-                                    child: Text("Course Banner",
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontFamily: 'Roboto',
-                                            fontWeight: FontWeight.w600))),
-                                Positioned(
-                                    right: width * 0.03,
-                                    top: width * 0.02,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        _pickImageFromGallery();
-                                      },
-                                      child: Text("Edit",
-                                          style: TextStyle(
-                                              color: Colors.white,
-                                              fontFamily: 'Roboto',
-                                              fontWeight: FontWeight.w500)),
-                                    )),
-                              ],
-                            ),
-                          )),
-                          Center(
-                            child: Padding(
-                              padding: EdgeInsets.only(top: width * 0.1),
-                              child: Container(
-                                width: width,
-                                child: Image.file(
-                                  _image!,
-                                  alignment: Alignment.center,
-                                ),
-                              ),
-                            ),
-                          ),
-                          Positioned(
-                              bottom: width * 0.02,
-                              left: width * 0.02,
-                              child: GestureDetector(
-                                  onTap: () {
-                                    _pickImageFromCamera();
-                                  },
-                                  child: FaIcon(FontAwesomeIcons.camera,
-                                      size: width * 0.06)))
-                        ],
-                      )),
-                )
-              : Padding(
-                  padding: EdgeInsets.only(
-                    left: width * 0.04,
-                    top: width * 0.02,
-                    right: width * 0.04,
-                  ),
-                  child: Container(
-                      decoration: BoxDecoration(
-                        color: Color.fromARGB(255, 255, 249, 222),
-                        borderRadius: BorderRadius.circular(10.0),
-                      ),
-                      height: width * 0.78,
-                      child: Stack(
-                        children: [
-                          Positioned(
-                              child: Container(
-                            decoration: BoxDecoration(
-                              color: HexColor('#2A2828'),
-                              borderRadius: BorderRadius.only(
-                                  topLeft: Radius.circular(10),
-                                  topRight: Radius.circular(10)),
-                            ),
-                            height: width * 0.10,
-                            child: Stack(
-                              children: [
-                                Positioned(
-                                    top: width * 0.02,
-                                    left: width * 0.03,
-                                    child: Text("Course Banner",
-                                        style: TextStyle(
-                                            color: Colors.white,
-                                            fontFamily: 'Roboto',
-                                            fontWeight: FontWeight.w600))),
-                                Positioned(
-                                    right: width * 0.03,
-                                    top: width * 0.02,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        _pickImageFromGallery();
-                                      },
-                                      child: Text("Edit",
-                                          style: TextStyle(
-                                              color: Colors.white,
-                                              fontFamily: 'Roboto',
-                                              fontWeight: FontWeight.w500)),
-                                    )),
-                              ],
-                            ),
-                          )),
-                          Positioned(
-                              top: width * 0.35,
-                              left: width * 0.33,
-                              child: Column(
-                                children: [
-                                  GestureDetector(
-                                    onTap: () {
-                                      _pickImageFromGallery();
-                                    },
-                                    child: Image.asset(
-                                      'assets/Images/Addphoto2.png',
-                                      width: width * 0.13,
-                                      height: width * 0.13,
-                                    ),
-                                  ),
-                                  Text(
-                                    "Click to Add Photo",
-                                    style: TextStyle(
-                                      fontSize: width * 0.03,
-                                      color: Colors.black38,
-                                    ),
-                                  ),
-                                ],
-                              )),
-                          Positioned(
-                              bottom: width * 0.02,
-                              left: width * 0.02,
-                              child: GestureDetector(
-                                  onTap: () {
-                                    _pickImageFromCamera();
-                                  },
-                                  child: FaIcon(FontAwesomeIcons.camera,
-                                      size: width * 0.06)))
-                        ],
-                      )),
-                ),
+        backgroundColor: Colors.white,
+        automaticallyImplyLeading: false,
+        actions: [
           Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Container(
-              width: MediaQuery.of(context).size.width,
-              child: TextField(
-                controller: courseName,
-                decoration: const InputDecoration(
-                  hintText: 'Enter Course Name',
-                  labelText: 'Enter Course Name',
-                ),
-              ),
+            padding: EdgeInsets.only(left: 10),
+            child: Builder(
+              builder: (BuildContext context) {
+                return GestureDetector(
+                  onTap: () {
+                    Scaffold.of(context).openDrawer();
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8.0),
+                    child: Icon(
+                      Icons.menu,
+                      color: Colors.black,
+                    ),
+                  ),
+                );
+              },
             ),
           ),
-          Row(
-            children: [
-              Spacer(),
-              Padding(
-                padding: const EdgeInsets.only(right: 10, top: 10),
-                child: GestureDetector(
-                  onTap: () {
-                    final moduleName = TextEditingController();
-                    showDialog(
-                      context: context,
-                      builder: (BuildContext context) {
-                        return AlertDialog(
-                          title: const Text('Add Module'),
-                          content: TextField(
-                            controller: moduleName,
-                            decoration: const InputDecoration(
-                              hintText: 'Enter module name',
-                            ),
-                          ),
-                          actions: [
-                            TextButton(
-                              onPressed: () {
-                                Navigator.of(context).pop();
-                              },
-                              child: const Text('Cancel'),
-                            ),
-                            TextButton(
-                              onPressed: () {
-                                modules[moduleName.text] = {
-                                  'expanded': false,
-                                  'content': []
-                                };
-                                Navigator.of(context).pop();
-                                setState(() {});
-                              },
-                              child: const Text('Add'),
-                            ),
-                          ],
-                        );
-                      },
-                    );
-                  },
-                  child: Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(10),
-                      color: Colors.orange,
-                    ),
-                    child: const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: Text("Add Module"),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: ListView(
-                children: modules.keys.map((String key) {
-                  return GestureDetector(
-                    onTap: () {
-                      setState(() {
-                        modules[key]['expanded'] = !modules[key]['expanded'];
-                      });
-                    },
-                    child: Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              key,
-                              style: TextStyle(fontSize: 18),
-                            ),
-                            Row(
-                              children: [
-                                Spacer(),
-                                PopupMenuButton<String>(
-                                  onSelected: (String result) {
-                                    _addContent(key, result);
-                                  },
-                                  itemBuilder: (BuildContext context) =>
-                                      <PopupMenuEntry<String>>[
-                                    const PopupMenuItem<String>(
-                                      value: 'PDF',
-                                      child: Text('PDF'),
-                                    ),
-                                    const PopupMenuItem<String>(
-                                      value: 'PPT',
-                                      child: Text('PPT'),
-                                    ),
-                                    const PopupMenuItem<String>(
-                                      value: 'Image',
-                                      child: Text('Image'),
-                                    ),
-                                    const PopupMenuItem<String>(
-                                      value: 'Video',
-                                      child: Text('Video'),
-                                    ),
-                                  ],
-                                  icon: Icon(Icons.add),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(left: 8.0),
-                                  child: GestureDetector(
-                                    onTap: () {
-                                      setState(() {
-                                        modules.remove(key);
-                                      });
-                                    },
-                                    child: Icon(Icons.delete),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            if (modules[key]['expanded'])
-                              Padding(
-                                padding: const EdgeInsets.only(top: 8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: List<Widget>.from(
-                                    modules[key]['content'].map((contentType) =>
-                                        Text('• $contentType')),
-                                  ),
-                                ),
-                              ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  );
-                }).toList(),
+          Spacer(),
+          Padding(
+            padding: EdgeInsets.only(right: 10),
+            child: GestureDetector(
+              onTap: () {},
+              child: Icon(
+                Icons.notifications_none,
+                color: Colors.black,
               ),
             ),
           ),
         ],
       ),
+      body: PageView(
+        controller: _pageController,
+        physics: AlwaysScrollableScrollPhysics(),
+        onPageChanged: (index) {
+          handleNavigation(index);
+        },
+        children: [
+          Adminhomescreen(),
+          Coursesandworkshops(),
+          UploadPage(),
+          Schools(),
+          Profile(),
+        ],
+      ),
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        showUnselectedLabels: false,
+        backgroundColor: Colors.white,
+        items: const <BottomNavigationBarItem>[
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home),
+            label: 'Home',
+          ),
+          BottomNavigationBarItem(
+            icon: FaIcon(FontAwesomeIcons.clipboard),
+            label: 'Courses',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(
+              Icons.add,
+              size: 30,
+            ),
+            label: 'Upload',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.school),
+            label: 'Schools',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person),
+            label: 'Profile',
+          ),
+        ],
+        currentIndex: _selectedIndex,
+        selectedItemColor: const Color.fromARGB(255, 255, 145, 0),
+        onTap: _onItemTapped,
+      ),
+      drawer: CustomDrawer(
+        handleNavigation: handleNavigation,
+      ),
     );
   }
 
-  Future _pickImageFromGallery() async {
-    final pickedimage =
-        await ImagePicker().pickImage(source: ImageSource.gallery);
+  void handleNavigation(int index) {
     setState(() {
-      _image = File(pickedimage!.path);
+      _selectedIndex = index;
+      switch (index) {
+        case 0:
+          _pageController.jumpToPage(0);
+          break;
+        case 1:
+          _pageController.jumpToPage(1);
+          break;
+        case 2:
+          _pageController.jumpToPage(2);
+          break;
+        case 3:
+          _pageController.jumpToPage(3);
+          break;
+        default:
+          break;
+      }
     });
   }
+}
 
-  Future _pickImageFromCamera() async {
-    final pickedimage =
-        await ImagePicker().pickImage(source: ImageSource.camera);
-    setState(() {
-      _image = File(pickedimage!.path);
-    });
+class CustomDrawer extends StatelessWidget {
+  final Function(int) handleNavigation;
+
+  CustomDrawer({required this.handleNavigation});
+  // ignore: non_constant_identifier_names
+  final User = FirebaseAuth.instance.currentUser;
+  Future<String?> getUsername() async {
+    String? email;
+    try {
+      var userDocument = await FirebaseFirestore.instance
+          .collection('Admin')
+          .doc(User!.email)
+          .collection('userinfo')
+          .doc('userinfo')
+          .get();
+
+      if (userDocument.exists) {
+        // If the document exists, retrieve the username
+        email = userDocument.get('email');
+      }
+    } catch (e) {
+      print("Error getting username: $e");
+    }
+    return email;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+
+    return Drawer(
+      width: width * 0.80,
+      backgroundColor: Colors.white,
+      child: FutureBuilder<String?>(
+        future: getUsername(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Container();
+          } else if (snapshot.hasError) {
+            return Text("Error: ${snapshot.error}");
+          } else {
+            return ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                DrawerHeader(
+                  decoration: BoxDecoration(
+                    color: Colors.black,
+                  ),
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        top: -20,
+                        right: 0,
+                        child: InkWell(
+                          onTap: () {
+                            Navigator.pop(context);
+                          },
+                          child: Container(
+                            padding: EdgeInsets.all(16.0),
+                            child: FaIcon(
+                              FontAwesomeIcons.close,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () {},
+                            child: Icon(
+                              Icons.account_circle,
+                              color: Colors.amber,
+                              size: 60,
+                            ),
+                          ),
+                          Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                ' Welcome,',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontFamily: 'Roboto',
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '  ${snapshot.data}',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize:
+                                      snapshot.data!.length <= 26 ? 14 : 11,
+                                  fontFamily: 'Roboto',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                ListTile(
+                  leading: FaIcon(
+                    FontAwesomeIcons.houseChimney,
+                    color: Colors.black,
+                  ),
+                  title: Text(
+                    'Home',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () {
+                    handleNavigation(
+                        0); // Navigate to the first page (MainBuilderHome)
+                    Navigator.pop(context);
+                  },
+                ),
+                Divider(
+                  color: Colors.black,
+                  thickness: 0,
+                  indent: 0,
+                  endIndent: 0,
+                ),
+                ListTile(
+                  leading: FaIcon(
+                    FontAwesomeIcons.clipboard,
+                    color: Colors.black,
+                  ),
+                  title: Text(
+                    'Orders',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () {
+                    handleNavigation(1);
+                    Navigator.pop(context);
+                  },
+                ),
+                Divider(
+                  color: Colors.black,
+                  thickness: 0,
+                  indent: 0,
+                  endIndent: 0,
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.currency_rupee,
+                    color: Colors.black,
+                  ),
+                  title: Text(
+                    'Revenue',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () {
+                    handleNavigation(2);
+                    Navigator.pop(context);
+                  },
+                ),
+                Divider(
+                  color: Colors.black,
+                  thickness: 0,
+                  indent: 0,
+                  endIndent: 0,
+                ),
+                ListTile(
+                  leading: Icon(
+                    Icons.person,
+                    color: Colors.black,
+                  ),
+                  title: Text(
+                    'Profile',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () {
+                    handleNavigation(3);
+                    Navigator.pop(context);
+                  },
+                ),
+                Divider(
+                  color: Colors.black,
+                  thickness: 0,
+                  indent: 0,
+                  endIndent: 0,
+                ),
+              ],
+            );
+          }
+        },
+      ),
+    );
   }
 }
