@@ -21,6 +21,8 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
   TextEditingController courseName = TextEditingController();
   final TextEditingController fromDateController = TextEditingController();
   final TextEditingController toDateController = TextEditingController();
+  final TextEditingController workshopdescription = TextEditingController();
+  bool isloading = false;
   DateTime? _fromDate;
   DateTime? _toDate;
   File? _image;
@@ -373,6 +375,7 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
   Future<void> UploadtoFirebase() async {
     final coursename = courseName.text.trim();
     String courseBannerURL = await _getimageUrl();
+
     // Validate the course name
     if (coursename.isEmpty) {
       print("Course name cannot be empty.");
@@ -382,7 +385,7 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
     final courseRef = FirebaseFirestore.instance
         .collection("Content")
         .doc("Content")
-        .collection("Courses")
+        .collection("Workshops")
         .doc(coursename); // Using course name as document ID
 
     try {
@@ -390,8 +393,8 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
       final courseNamesRef = FirebaseFirestore.instance
           .collection("Content")
           .doc("Content")
-          .collection("courseNames")
-          .doc("courseNames");
+          .collection("workshopNames")
+          .doc("workshopNames");
 
       final courseNamesDoc = await courseNamesRef.get();
       final courseNamesData = courseNamesDoc.data() ?? {};
@@ -407,19 +410,21 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
       await courseNamesRef.set(courseNamesData);
 
       // Set the course info
-      await courseRef.collection("courseinfo").doc("info").set({
-        "courseName": coursename,
-        "courseId": uniqueCourseId,
-        "courseImage": courseBannerURL,
+      await courseRef.collection("workshopinfo").doc("info").set({
+        "workshopName": coursename,
+        "workshopDescription": workshopdescription.text,
+        "workshopId": uniqueCourseId,
+        "workshopImage": courseBannerURL,
       });
 
       for (var module in modules.entries) {
         final moduleName = module.key;
         final moduleData = module.value;
         final moduleContent = moduleData['content'];
+        final taskUpto = moduleData['taskUpto']; // Task Upto Date
 
         // Reference to the module document
-        final moduleRef = courseRef.collection("Modules").doc(moduleName);
+        final moduleRef = courseRef.collection("Tasks").doc(moduleName);
 
         for (var content in moduleContent) {
           final fileName = content['fileName'];
@@ -444,7 +449,7 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
             // Upload file to Firebase Storage with correct extension
             final storageRef = FirebaseStorage.instance
                 .ref()
-                .child('Coursecontent/$coursename/$moduleName/$fullFileName');
+                .child('Workshopcontent/$coursename/$moduleName/$fullFileName');
             await storageRef.putFile(file);
 
             // Get the download URL of the uploaded file
@@ -457,9 +462,14 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
             await moduleRef.set(documentData, SetOptions(merge: true));
           }
         }
+
+        // Add the "Task Upto" date to the module document
+        await moduleRef.set({
+          'taskUpto': taskUpto != null ? taskUpto.toIso8601String() : null,
+        }, SetOptions(merge: true));
       }
 
-      print("Files uploaded successfully.");
+      print("Files and task dates uploaded successfully.");
     } catch (e) {
       print("Failed to upload files: $e");
     }
@@ -483,6 +493,27 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
     }
   }
 
+  void _showDocumentIdPopup2(String documentId, String title) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(title),
+          content: Text(documentId),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+                Navigator.pop(context);
+              },
+              child: const Text('Continue'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
@@ -494,8 +525,16 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
         title: const Text("Upload New Workshop"),
       ),
       bottomNavigationBar: GestureDetector(
-        onTap: () {
-          UploadtoFirebase();
+        onTap: () async {
+          setState(() {
+            isloading = true;
+          });
+          await UploadtoFirebase();
+          setState(() {
+            isloading = false;
+          });
+          _showDocumentIdPopup2("Workshop Uploaded Successfully",
+              "Workshop Uploaded Successfully");
         },
         child: Container(
           height: 60,
@@ -507,371 +546,431 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
           )),
         ),
       ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _image != null
-                ? Padding(
-                    padding: EdgeInsets.only(
-                      left: width * 0.04,
-                      top: width * 0.02,
-                      right: width * 0.04,
-                    ),
-                    child: Container(
-                        decoration: BoxDecoration(
-                          color: Color.fromARGB(255, 255, 249, 222),
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        height: width * 0.78,
-                        child: Stack(
-                          children: [
-                            Positioned(
-                                child: Container(
+      body: isloading
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _image != null
+                      ? Padding(
+                          padding: EdgeInsets.only(
+                            left: width * 0.04,
+                            top: width * 0.02,
+                            right: width * 0.04,
+                          ),
+                          child: Container(
                               decoration: BoxDecoration(
-                                color: HexColor('#2A2828'),
-                                borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(10),
-                                    topRight: Radius.circular(10)),
+                                color: Color.fromARGB(255, 255, 249, 222),
+                                borderRadius: BorderRadius.circular(10.0),
                               ),
-                              height: width * 0.10,
+                              height: width * 0.78,
                               child: Stack(
                                 children: [
                                   Positioned(
-                                      top: width * 0.02,
-                                      left: width * 0.03,
-                                      child: Text("Workshop Banner",
-                                          style: TextStyle(
-                                              color: Colors.white,
-                                              fontFamily: 'Roboto',
-                                              fontWeight: FontWeight.w600))),
-                                  Positioned(
-                                      right: width * 0.03,
-                                      top: width * 0.02,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          _pickImageFromGallery();
-                                        },
-                                        child: Text("Edit",
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontFamily: 'Roboto',
-                                                fontWeight: FontWeight.w500)),
-                                      )),
-                                ],
-                              ),
-                            )),
-                            Center(
-                              child: Padding(
-                                padding: EdgeInsets.only(top: width * 0.1),
-                                child: Container(
-                                  width: width,
-                                  child: Image.file(
-                                    _image!,
-                                    alignment: Alignment.center,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                                bottom: width * 0.02,
-                                left: width * 0.02,
-                                child: GestureDetector(
-                                    onTap: () {
-                                      _pickImageFromCamera();
-                                    },
-                                    child: FaIcon(FontAwesomeIcons.camera,
-                                        size: width * 0.06)))
-                          ],
-                        )),
-                  )
-                : Padding(
-                    padding: EdgeInsets.only(
-                      left: width * 0.04,
-                      top: width * 0.02,
-                      right: width * 0.04,
-                    ),
-                    child: Container(
-                        decoration: BoxDecoration(
-                          color: Color.fromARGB(255, 255, 249, 222),
-                          borderRadius: BorderRadius.circular(10.0),
-                        ),
-                        height: width * 0.78,
-                        child: Stack(
-                          children: [
-                            Positioned(
-                                child: Container(
-                              decoration: BoxDecoration(
-                                color: HexColor('#2A2828'),
-                                borderRadius: BorderRadius.only(
-                                    topLeft: Radius.circular(10),
-                                    topRight: Radius.circular(10)),
-                              ),
-                              height: width * 0.10,
-                              child: Stack(
-                                children: [
-                                  Positioned(
-                                      top: width * 0.02,
-                                      left: width * 0.03,
-                                      child: Text("Workshop Banner",
-                                          style: TextStyle(
-                                              color: Colors.white,
-                                              fontFamily: 'Roboto',
-                                              fontWeight: FontWeight.w600))),
-                                  Positioned(
-                                      right: width * 0.03,
-                                      top: width * 0.02,
-                                      child: GestureDetector(
-                                        onTap: () {
-                                          _pickImageFromGallery();
-                                        },
-                                        child: Text("Edit",
-                                            style: TextStyle(
-                                                color: Colors.white,
-                                                fontFamily: 'Roboto',
-                                                fontWeight: FontWeight.w500)),
-                                      )),
-                                ],
-                              ),
-                            )),
-                            Positioned(
-                                top: width * 0.35,
-                                left: width * 0.33,
-                                child: Column(
-                                  children: [
-                                    GestureDetector(
-                                      onTap: () {
-                                        _pickImageFromGallery();
-                                      },
-                                      child: Image.asset(
-                                        'assets/Images/Addphoto2.png',
-                                        width: width * 0.13,
-                                        height: width * 0.13,
+                                      child: Container(
+                                    decoration: BoxDecoration(
+                                      color: HexColor('#2A2828'),
+                                      borderRadius: BorderRadius.only(
+                                          topLeft: Radius.circular(10),
+                                          topRight: Radius.circular(10)),
+                                    ),
+                                    height: width * 0.10,
+                                    child: Stack(
+                                      children: [
+                                        Positioned(
+                                            top: width * 0.02,
+                                            left: width * 0.03,
+                                            child: Text("Workshop Banner",
+                                                style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontFamily: 'Roboto',
+                                                    fontWeight:
+                                                        FontWeight.w600))),
+                                        Positioned(
+                                            right: width * 0.03,
+                                            top: width * 0.02,
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                _pickImageFromGallery();
+                                              },
+                                              child: Text("Edit",
+                                                  style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontFamily: 'Roboto',
+                                                      fontWeight:
+                                                          FontWeight.w500)),
+                                            )),
+                                      ],
+                                    ),
+                                  )),
+                                  Center(
+                                    child: Padding(
+                                      padding:
+                                          EdgeInsets.only(top: width * 0.1),
+                                      child: Container(
+                                        width: width,
+                                        child: Image.file(
+                                          _image!,
+                                          alignment: Alignment.center,
+                                        ),
                                       ),
                                     ),
-                                    Text(
-                                      "Click to Add Photo",
-                                      style: TextStyle(
-                                        fontSize: width * 0.03,
-                                        color: Colors.black38,
+                                  ),
+                                  Positioned(
+                                      bottom: width * 0.02,
+                                      left: width * 0.02,
+                                      child: GestureDetector(
+                                          onTap: () {
+                                            _pickImageFromCamera();
+                                          },
+                                          child: FaIcon(FontAwesomeIcons.camera,
+                                              size: width * 0.06)))
+                                ],
+                              )),
+                        )
+                      : Padding(
+                          padding: EdgeInsets.only(
+                            left: width * 0.04,
+                            top: width * 0.02,
+                            right: width * 0.04,
+                          ),
+                          child: Container(
+                              decoration: BoxDecoration(
+                                color: Color.fromARGB(255, 255, 249, 222),
+                                borderRadius: BorderRadius.circular(10.0),
+                              ),
+                              height: width * 0.78,
+                              child: Stack(
+                                children: [
+                                  Positioned(
+                                      child: Container(
+                                    decoration: BoxDecoration(
+                                      color: HexColor('#2A2828'),
+                                      borderRadius: BorderRadius.only(
+                                          topLeft: Radius.circular(10),
+                                          topRight: Radius.circular(10)),
+                                    ),
+                                    height: width * 0.10,
+                                    child: Stack(
+                                      children: [
+                                        Positioned(
+                                            top: width * 0.02,
+                                            left: width * 0.03,
+                                            child: Text("Workshop Banner",
+                                                style: TextStyle(
+                                                    color: Colors.white,
+                                                    fontFamily: 'Roboto',
+                                                    fontWeight:
+                                                        FontWeight.w600))),
+                                        Positioned(
+                                            right: width * 0.03,
+                                            top: width * 0.02,
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                _pickImageFromGallery();
+                                              },
+                                              child: Text("Edit",
+                                                  style: TextStyle(
+                                                      color: Colors.white,
+                                                      fontFamily: 'Roboto',
+                                                      fontWeight:
+                                                          FontWeight.w500)),
+                                            )),
+                                      ],
+                                    ),
+                                  )),
+                                  Positioned(
+                                      top: width * 0.35,
+                                      left: width * 0.33,
+                                      child: Column(
+                                        children: [
+                                          GestureDetector(
+                                            onTap: () {
+                                              _pickImageFromGallery();
+                                            },
+                                            child: Image.asset(
+                                              'assets/Images/Addphoto2.png',
+                                              width: width * 0.13,
+                                              height: width * 0.13,
+                                            ),
+                                          ),
+                                          Text(
+                                            "Click to Add Photo",
+                                            style: TextStyle(
+                                              fontSize: width * 0.03,
+                                              color: Colors.black38,
+                                            ),
+                                          ),
+                                        ],
+                                      )),
+                                  Positioned(
+                                      bottom: width * 0.02,
+                                      left: width * 0.02,
+                                      child: GestureDetector(
+                                          onTap: () {
+                                            _pickImageFromCamera();
+                                          },
+                                          child: FaIcon(FontAwesomeIcons.camera,
+                                              size: width * 0.06)))
+                                ],
+                              )),
+                        ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Container(
+                      width: MediaQuery.of(context).size.width,
+                      child: TextField(
+                        controller: courseName,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter Workshop Name',
+                          labelText: 'Enter Workshop Name',
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Container(
+                      width: MediaQuery.of(context).size.width,
+                      child: TextField(
+                        controller: workshopdescription,
+                        decoration: const InputDecoration(
+                          hintText: 'Enter Workshop Description',
+                          labelText: 'Enter Workshop Description',
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: fromDateController,
+                            readOnly: true,
+                            decoration: const InputDecoration(
+                              hintText: 'From Date',
+                              labelText: 'From Date',
+                              suffixIcon: Icon(Icons.calendar_today),
+                            ),
+                            onTap: () => _selectDate(context,
+                                fromDateController, (date) => _fromDate = date),
+                          ),
+                        ),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: TextField(
+                            controller: toDateController,
+                            readOnly: true,
+                            decoration: const InputDecoration(
+                              hintText: 'To Date',
+                              labelText: 'To Date',
+                              suffixIcon: Icon(Icons.calendar_today),
+                            ),
+                            onTap: () => _selectDate(context, toDateController,
+                                (date) => _toDate = date),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Spacer(),
+                      Padding(
+                        padding: const EdgeInsets.only(right: 10, top: 10),
+                        child: GestureDetector(
+                          onTap: () {
+                            final moduleName = TextEditingController();
+                            final taskUptoController = TextEditingController();
+                            DateTime? _taskUpto;
+
+                            showDialog(
+                              context: context,
+                              builder: (BuildContext context) {
+                                return AlertDialog(
+                                  title: const Text('Add Task'),
+                                  content: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      TextField(
+                                        controller: moduleName,
+                                        decoration: const InputDecoration(
+                                          hintText: 'Enter Task Name',
+                                        ),
                                       ),
+                                      SizedBox(height: 10),
+                                      TextField(
+                                        controller: taskUptoController,
+                                        readOnly: true,
+                                        decoration: const InputDecoration(
+                                          hintText: 'Enter Deadline',
+                                          labelText: 'Deadline',
+                                          suffixIcon:
+                                              Icon(Icons.calendar_today),
+                                        ),
+                                        onTap: () => _selectDate(
+                                          context,
+                                          taskUptoController,
+                                          (date) {
+                                            _taskUpto = date;
+                                          },
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  actions: [
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.of(context).pop();
+                                      },
+                                      child: const Text('Cancel'),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        modules[moduleName.text] = {
+                                          'expanded': false,
+                                          'content': [],
+                                          'taskUpto': _taskUpto,
+                                        };
+                                        Navigator.of(context).pop();
+                                        setState(() {});
+                                      },
+                                      child: const Text('Add'),
                                     ),
                                   ],
-                                )),
-                            Positioned(
-                                bottom: width * 0.02,
-                                left: width * 0.02,
-                                child: GestureDetector(
-                                    onTap: () {
-                                      _pickImageFromCamera();
-                                    },
-                                    child: FaIcon(FontAwesomeIcons.camera,
-                                        size: width * 0.06)))
-                          ],
-                        )),
-                  ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Container(
-                width: MediaQuery.of(context).size.width,
-                child: TextField(
-                  controller: courseName,
-                  decoration: const InputDecoration(
-                    hintText: 'Enter Workshop Name',
-                    labelText: 'Enter Workshop Name',
-                  ),
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: fromDateController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        hintText: 'From Date',
-                        labelText: 'From Date',
-                        suffixIcon: Icon(Icons.calendar_today),
+                                );
+                              },
+                            );
+                          },
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(10),
+                              color: Colors.orange,
+                            ),
+                            child: const Padding(
+                              padding: EdgeInsets.all(8.0),
+                              child: Text("Add Task"),
+                            ),
+                          ),
+                        ),
                       ),
-                      onTap: () => _selectDate(context, fromDateController,
-                          (date) => _fromDate = date),
-                    ),
+                    ],
                   ),
-                  SizedBox(width: 10),
-                  Expanded(
-                    child: TextField(
-                      controller: toDateController,
-                      readOnly: true,
-                      decoration: const InputDecoration(
-                        hintText: 'To Date',
-                        labelText: 'To Date',
-                        suffixIcon: Icon(Icons.calendar_today),
-                      ),
-                      onTap: () => _selectDate(
-                          context, toDateController, (date) => _toDate = date),
+                  SizedBox(
+                    height: modules.isEmpty ? 40 : 300,
+                    child: Padding(
+                      padding: const EdgeInsets.only(top: 8.0),
+                      child: modules.isEmpty
+                          ? Center(
+                              child: Text("No Tasks Yet"),
+                            )
+                          : ListView(
+                              children: modules.keys.map((String key) {
+                                return GestureDetector(
+                                  onTap: () {
+                                    setState(() {
+                                      modules[key]['expanded'] =
+                                          !modules[key]['expanded'];
+                                    });
+                                  },
+                                  child: Card(
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            key,
+                                            style: TextStyle(fontSize: 18),
+                                          ),
+                                          Row(
+                                            children: [
+                                              Spacer(),
+                                              PopupMenuButton<String>(
+                                                onSelected: (String result) {
+                                                  _addContent(key, result);
+                                                },
+                                                itemBuilder: (BuildContext
+                                                        context) =>
+                                                    <PopupMenuEntry<String>>[
+                                                  const PopupMenuItem<String>(
+                                                    value: 'Opinions',
+                                                    child: Text('Opinions'),
+                                                  ),
+                                                  const PopupMenuItem<String>(
+                                                    value: 'Quiz',
+                                                    child: Text('Quiz'),
+                                                  ),
+                                                  const PopupMenuItem<String>(
+                                                    value: 'Poll',
+                                                    child: Text('Poll'),
+                                                  ),
+                                                  const PopupMenuItem<String>(
+                                                    value: 'Form',
+                                                    child: Text('Form'),
+                                                  ),
+                                                  const PopupMenuItem<String>(
+                                                    value: 'Note',
+                                                    child: Text('Note'),
+                                                  ),
+                                                ],
+                                                icon: Icon(Icons.add),
+                                              ),
+                                              Padding(
+                                                padding: const EdgeInsets.only(
+                                                    left: 8.0),
+                                                child: GestureDetector(
+                                                  onTap: () {
+                                                    setState(() {
+                                                      modules.remove(key);
+                                                    });
+                                                  },
+                                                  child: Icon(Icons.delete),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          if (modules[key]['expanded'])
+                                            Padding(
+                                              padding: const EdgeInsets.only(
+                                                  top: 8.0),
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  if (modules[key]
+                                                          ['taskUpto'] !=
+                                                      null)
+                                                    Text(
+                                                      'Task Upto: ${modules[key]['taskUpto']}',
+                                                      style: TextStyle(
+                                                          fontStyle:
+                                                              FontStyle.italic),
+                                                    ),
+                                                  ...List<Widget>.from(
+                                                    modules[key]['content'].map(
+                                                        (contentType) => Text(
+                                                            '• $contentType')),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
                     ),
                   ),
                 ],
               ),
             ),
-            Row(
-              children: [
-                Spacer(),
-                Padding(
-                  padding: const EdgeInsets.only(right: 10, top: 10),
-                  child: GestureDetector(
-                    onTap: () {
-                      final moduleName = TextEditingController();
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            title: const Text('Add Task'),
-                            content: TextField(
-                              controller: moduleName,
-                              decoration: const InputDecoration(
-                                hintText: 'Enter Task Name',
-                              ),
-                            ),
-                            actions: [
-                              TextButton(
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                                child: const Text('Cancel'),
-                              ),
-                              TextButton(
-                                onPressed: () {
-                                  modules[moduleName.text] = {
-                                    'expanded': false,
-                                    'content': []
-                                  };
-                                  Navigator.of(context).pop();
-                                  setState(() {});
-                                },
-                                child: const Text('Add'),
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(10),
-                        color: Colors.orange,
-                      ),
-                      child: const Padding(
-                        padding: EdgeInsets.all(8.0),
-                        child: Text("Add Task"),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(
-              height: modules.isEmpty ? 40 : 300,
-              child: Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: modules.isEmpty
-                    ? Center(
-                        child: Text("No Tasks Yet"),
-                      )
-                    : ListView(
-                        children: modules.keys.map((String key) {
-                          return GestureDetector(
-                            onTap: () {
-                              setState(() {
-                                modules[key]['expanded'] =
-                                    !modules[key]['expanded'];
-                              });
-                            },
-                            child: Card(
-                              child: Padding(
-                                padding: const EdgeInsets.all(8.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      key,
-                                      style: TextStyle(fontSize: 18),
-                                    ),
-                                    Row(
-                                      children: [
-                                        Spacer(),
-                                        PopupMenuButton<String>(
-                                          onSelected: (String result) {
-                                            _addContent(key, result);
-                                          },
-                                          itemBuilder: (BuildContext context) =>
-                                              <PopupMenuEntry<String>>[
-                                            const PopupMenuItem<String>(
-                                              value: 'Opinions',
-                                              child: Text('Opinions'),
-                                            ),
-                                            const PopupMenuItem<String>(
-                                              value: 'Quiz',
-                                              child: Text('Quiz'),
-                                            ),
-                                            const PopupMenuItem<String>(
-                                              value: 'Poll',
-                                              child: Text('Poll'),
-                                            ),
-                                            const PopupMenuItem<String>(
-                                              value: 'Form',
-                                              child: Text('Form'),
-                                            ),
-                                            const PopupMenuItem<String>(
-                                              value: 'Note',
-                                              child: Text('Note'),
-                                            ),
-                                          ],
-                                          icon: Icon(Icons.add),
-                                        ),
-                                        Padding(
-                                          padding:
-                                              const EdgeInsets.only(left: 8.0),
-                                          child: GestureDetector(
-                                            onTap: () {
-                                              setState(() {
-                                                modules.remove(key);
-                                              });
-                                            },
-                                            child: Icon(Icons.delete),
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                    if (modules[key]['expanded'])
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(top: 8.0),
-                                        child: Column(
-                                          crossAxisAlignment:
-                                              CrossAxisAlignment.start,
-                                          children: List<Widget>.from(
-                                            modules[key]['content'].map(
-                                                (contentType) =>
-                                                    Text('• $contentType')),
-                                          ),
-                                        ),
-                                      ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

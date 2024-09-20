@@ -354,15 +354,19 @@ class _UploadCourseState extends State<UploadCourse> {
 
         final moduleRef = courseRef.collection("Modules").doc(moduleName);
 
+        // Create a map to store the content of the module along with the serial number
+        Map<String, dynamic> moduleContentData = {'s.no': serialNumber};
+
         for (var content in moduleContent) {
           final String fileName = content['fileName'];
 
           if (content['type'] == 'video') {
             final String youtubeUrl = content['youtubeUrl'];
-            await moduleRef.set({
+            // Add the video content along with the serial number
+            moduleContentData[fileName] = {
+              'url': youtubeUrl,
               's.no': serialNumber,
-              fileName: youtubeUrl,
-            }, SetOptions(merge: true));
+            };
           } else {
             final File file = content['file'];
             final String fileExtension = file.path.split('.').last;
@@ -374,15 +378,15 @@ class _UploadCourseState extends State<UploadCourse> {
             await storageRef.putFile(file);
 
             final String downloadURL = await storageRef.getDownloadURL();
-
-            await moduleRef.set({
+            moduleContentData[fileName] = {
+              'url': downloadURL,
               's.no': serialNumber,
-              fileName: downloadURL,
-            }, SetOptions(merge: true));
+            };
           }
-        }
 
-        serialNumber++;
+          serialNumber++;
+        }
+        await moduleRef.set(moduleContentData, SetOptions(merge: true));
       }
 
       print("Course and modules uploaded successfully.");
