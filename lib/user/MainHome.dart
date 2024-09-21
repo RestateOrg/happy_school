@@ -1,8 +1,12 @@
+// ignore_for_file: prefer_const_constructors, prefer_const_literals_to_create_immutables, sized_box_for_whitespace
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:happy_school/user/Enroll.dart';
 import 'package:happy_school/user/coursenames.dart';
 import 'package:happy_school/utils/hexcolor.dart';
 
@@ -14,10 +18,67 @@ class Mainhome extends StatefulWidget {
 }
 
 class _MainhomeState extends State<Mainhome> {
-  final FocusNode _searchFocusNode = FocusNode();
+  AddCourse ac = AddCourse();
+
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Modified function to return a Future<List<String>> instead of void
+  final List<String> usersCourses = []; // List to store the course names
+
+  @override
+  void initState() {
+    super.initState();
+    getCourseCourses(); // Call the function to fetch and store courses
+  }
+
+  // Fetch and store the course names in usersCourses list
+  Future<void> getCourseCourses() async {
+    try {
+      // Get the currently authenticated user
+      final User? user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        // Handle the case where the user is not logged in
+        return;
+      }
+
+      // Get the user's email
+      final String email = user.email!;
+
+      // Reference the Firestore document using the email
+      final DocumentReference courseDocRef =
+          _firestore.collection('Users').doc(email);
+
+      // Fetch course names
+      final QuerySnapshot infoSnapshot =
+          await courseDocRef.collection('courseNames').get();
+
+      // Check if there are any documents
+      if (infoSnapshot.docs.isNotEmpty) {
+        // Clear the list to avoid duplications
+        setState(() {
+          usersCourses.clear();
+          // Add fetched courses to the usersCourses list
+          usersCourses.addAll(
+            infoSnapshot.docs.map((doc) {
+              Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+              return data['courseName']
+                      ?.toString()
+                      .toLowerCase()
+                      .replaceAll(" ", "") ??
+                  '';
+            }).toList(),
+          );
+        });
+      } else {
+        print('No courses found for this user.');
+      }
+    } catch (e) {
+      print('Error: $e');
+    }
+  }
+
+  // ignore: non_constant_identifier_names
+
   Future<List<String>> getCourseDetailsInfo(String courseName) async {
     try {
       final DocumentReference courseDocRef = _firestore
@@ -33,7 +94,7 @@ class _MainhomeState extends State<Mainhome> {
       if (infoSnapshot.docs.isNotEmpty) {
         return infoSnapshot.docs.map((doc) {
           Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-          return data['courseImage']?.toString() ?? ''; // Ensure it's a String
+          return data['courseImage']?.toString() ?? '';
         }).toList();
       } else {
         print('No course info found');
@@ -81,6 +142,9 @@ class _MainhomeState extends State<Mainhome> {
   }
 
   Widget _courseItems(Map<String, dynamic> course, String courseImage) {
+    String courseName = course['courseName'];
+    bool isEnrolled =
+        usersCourses.contains(courseName.toLowerCase().replaceAll(" ", ''));
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Container(
@@ -135,7 +199,8 @@ class _MainhomeState extends State<Mainhome> {
                     padding: const EdgeInsets.only(right: 8.0),
                     child: GestureDetector(
                       onTap: () async {
-                        // Your enroll action code here
+                        await ac
+                            .saveCourseToUserCollection(course['courseName']);
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
@@ -145,7 +210,7 @@ class _MainhomeState extends State<Mainhome> {
                           color: HexColor("#FF6B00"),
                         ),
                         child: Text(
-                          'Enroll',
+                          (isEnrolled) ? "Enrolled" : 'Enroll',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 12,
@@ -173,28 +238,6 @@ class _MainhomeState extends State<Mainhome> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Align(
-                alignment: Alignment.topCenter,
-                child: CupertinoSearchTextField(
-                  placeholder: "What course are you looking for?",
-                  focusNode: _searchFocusNode,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(30),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black12,
-                        spreadRadius: 1,
-                        blurRadius: 2,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
             Padding(
               padding: EdgeInsets.only(top: 5, left: 7),
               child: Container(

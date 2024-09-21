@@ -319,6 +319,9 @@ class _UploadCourseState extends State<UploadCourse> {
           .collection("courseNames")
           .doc("courseNames");
 
+      // Ensure the courseNames document exists
+      await courseNamesRef.set({}, SetOptions(merge: true));
+
       final courseNamesDoc = await courseNamesRef.get();
       final Map<String, dynamic> courseNamesData = courseNamesDoc.data() ?? {};
 
@@ -345,7 +348,7 @@ class _UploadCourseState extends State<UploadCourse> {
         "faqs": faqsForFirestore,
       });
 
-      int serialNumber = 1;
+      int moduleSerialNumber = 1;
 
       for (var module in modules.entries) {
         final String moduleName = module.key;
@@ -353,16 +356,19 @@ class _UploadCourseState extends State<UploadCourse> {
         final List<dynamic> moduleContent = moduleData['content'] ?? [];
 
         final moduleRef = courseRef.collection("Modules").doc(moduleName);
+        int contentSerialNumber = 1;
+
+        Map<String, dynamic> moduleContentData = {'s.no': moduleSerialNumber};
 
         for (var content in moduleContent) {
           final String fileName = content['fileName'];
 
           if (content['type'] == 'video') {
             final String youtubeUrl = content['youtubeUrl'];
-            await moduleRef.set({
-              's.no': serialNumber,
-              fileName: youtubeUrl,
-            }, SetOptions(merge: true));
+            moduleContentData[fileName] = {
+              'url': youtubeUrl,
+              's.no': contentSerialNumber,
+            };
           } else {
             final File file = content['file'];
             final String fileExtension = file.path.split('.').last;
@@ -374,15 +380,16 @@ class _UploadCourseState extends State<UploadCourse> {
             await storageRef.putFile(file);
 
             final String downloadURL = await storageRef.getDownloadURL();
-
-            await moduleRef.set({
-              's.no': serialNumber,
-              fileName: downloadURL,
-            }, SetOptions(merge: true));
+            moduleContentData[fileName] = {
+              'url': downloadURL,
+              's.no': contentSerialNumber,
+            };
           }
-        }
 
-        serialNumber++;
+          contentSerialNumber++;
+        }
+        await moduleRef.set(moduleContentData, SetOptions(merge: true));
+        moduleSerialNumber++;
       }
 
       print("Course and modules uploaded successfully.");

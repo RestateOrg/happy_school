@@ -125,7 +125,7 @@ class CoursesScreen extends StatelessWidget {
                     padding: EdgeInsets.only(
                         top: 10, right: 15, bottom: 10, left: 10),
                     child: Text(
-                      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+                      info['courseDescription'],
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.black45,
@@ -146,22 +146,25 @@ class CoursesScreen extends StatelessWidget {
                     ),
                   ),
                   ListView.builder(
-                    shrinkWrap:
-                        true, // This ensures the ListView takes up only the necessary space
-                    physics:
-                        NeverScrollableScrollPhysics(), // Disables ListView's own scrolling
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
                     itemCount: modules.length,
                     itemBuilder: (context, index) {
                       final module = modules[index];
-                      String vid =
-                          YoutubePlayer.convertUrlToId(module['vid']) ?? "";
+
+                      // Fix the vid field handling
+                      String vid = module.containsKey('vid') &&
+                              module['vid'] is String
+                          ? YoutubePlayer.convertUrlToId(module['vid']) ?? ""
+                          : "";
+
                       return GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => Modulescreen(
-                                module: module, // Pass the whole module data
+                                module: module,
                                 vid: vid,
                               ),
                             ),
@@ -232,7 +235,7 @@ class CoursesScreen extends StatelessWidget {
                                           size: 5, color: Colors.grey),
                                     ],
                                   ),
-                                )
+                                ),
                               ],
                             ),
                           ),
