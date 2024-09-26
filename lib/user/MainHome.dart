@@ -27,11 +27,11 @@ class _MainhomeState extends State<Mainhome> {
   @override
   void initState() {
     super.initState();
-    getCourseCourses(); // Call the function to fetch and store courses
+    getUserCourses(); // Call the function to fetch and store courses
   }
 
   // Fetch and store the course names in usersCourses list
-  Future<void> getCourseCourses() async {
+  Future<void> getUserCourses() async {
     try {
       // Get the currently authenticated user
       final User? user = FirebaseAuth.instance.currentUser;
@@ -201,6 +201,9 @@ class _MainhomeState extends State<Mainhome> {
                       onTap: () async {
                         await ac
                             .saveCourseToUserCollection(course['courseName']);
+                        setState(() {
+                          getUserCourses();
+                        });
                       },
                       child: Container(
                         padding: const EdgeInsets.symmetric(
