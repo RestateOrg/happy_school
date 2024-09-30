@@ -1,47 +1,134 @@
+// ignore_for_file: prefer_interpolation_to_compose_strings, sized_box_for_whitespace, library_private_types_in_public_api, use_super_parameters
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:happy_school/user/Enroll.dart';
 import 'package:happy_school/user/moduleScreen.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
-class CoursesScreen extends StatelessWidget {
+class CoursesScreen extends StatefulWidget {
   final String courseName;
 
+  // ignore: prefer_const_constructors_in_immutables
   CoursesScreen({Key? key, required this.courseName}) : super(key: key);
 
-  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  @override
+  _CoursesScreenState createState() => _CoursesScreenState();
+}
 
-  Future<Map<String, dynamic>> getCourseDetails() async {
+class _CoursesScreenState extends State<CoursesScreen> {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  bool isExpanded = false;
+  TextEditingController review = TextEditingController();
+
+  AddCourse ac = AddCourse();
+
+  final List<String> usersCourses = []; // List to store the course names
+  final List<dynamic> Cinfo = [];
+
+  @override
+  void initState() {
+    super.initState();
+    getUserCourses(); // Call the function to fetch and store courses
+  }
+
+  @override
+  void dispose() {
+    review.dispose();
+    super.dispose();
+  }
+
+  // Fetch and store the course names in usersCourses list
+  Future<void> getUserCourses() async {
     try {
-      // Reference to the course document
+      // Get the currently authenticated user
+      final User? user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        // Handle the case where the user is not logged in
+        return;
+      }
+
+      // Get the user's email
+      final String email = user.email!;
+
+      // Reference the Firestore document using the email
+      final DocumentReference courseDocRef =
+          _firestore.collection('Users').doc(email);
+
+      // Fetch course names
+      final QuerySnapshot infoSnapshot =
+          await courseDocRef.collection('courseNames').get();
+
+      // Check if there are any documents
+      if (infoSnapshot.docs.isNotEmpty) {
+        // Clear the list to avoid duplications
+        setState(() {
+          usersCourses.clear();
+          // Add fetched courses to the usersCourses list
+          usersCourses.addAll(
+            infoSnapshot.docs.map((doc) {
+              Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+              return data['courseName']
+                      ?.toString()
+                      .toLowerCase()
+                      .replaceAll(" ", "") ??
+                  '';
+            }).toList(),
+          );
+        });
+      } else {
+        print('No courses found for this user.');
+      }
+    } catch (e) {
+      print('Error: $e');
+    }
+  }
+
+  // Define Cinfo as a mutable list
+
+  Future<Map<String, dynamic>> getCourseDetails(String courseName) async {
+    try {
       final DocumentReference courseDocRef = _firestore
           .collection('Content')
           .doc('Content')
           .collection('Courses')
           .doc(courseName);
 
-      // Fetch all module documents
+      // Fetching modules and course info
       final QuerySnapshot modulesSnapshot =
           await courseDocRef.collection('Modules').get();
-
-      // Fetch single info document (assuming only one exists)
       final QuerySnapshot infoSnapshot =
           await courseDocRef.collection('courseinfo').get();
 
-      // Extract modules data including moduleName (doc ID)
+      // Extract and sort module data
       List<Map<String, dynamic>> modulesData = modulesSnapshot.docs.map((doc) {
         return {
-          'moduleName': doc.id, // Adding moduleName as the doc ID
+          'moduleName': doc.id,
           ...doc.data() as Map<String, dynamic>,
         };
       }).toList();
 
-      // Extract the single info data
+      modulesData.sort((a, b) {
+        return (a['s.no'] as int).compareTo(b['s.no'] as int);
+      });
+
+      // Extract course info (ensure it's not null)
       Map<String, dynamic>? infoData = infoSnapshot.docs.isNotEmpty
           ? infoSnapshot.docs.first.data() as Map<String, dynamic>
           : null;
 
+      // Store 'faqs' data into Cinfo list
+      if (infoData != null && infoData.containsKey('faqs')) {
+        Cinfo.clear(); // Clear the previous data in Cinfo
+        Cinfo.addAll(infoData['faqs'] as List<dynamic>);
+      }
+
+      // Return both modules and info
       return {
         'modules': modulesData,
         'info': infoData ?? {},
@@ -58,208 +145,254 @@ class CoursesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final width = MediaQuery.of(context).size.width;
-
+    String c = widget.courseName;
+    bool isEnrolled =
+        usersCourses.contains(c.toLowerCase().replaceAll(" ", ''));
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.orange,
-        title: Text(courseName),
+        title: Text(widget.courseName),
       ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: getCourseDetails(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (snapshot.hasError) {
-            return Center(
-              child: Text('Error: ${snapshot.error}'),
-            );
-          } else if (snapshot.hasData) {
-            final modules =
-                snapshot.data!['modules'] as List<Map<String, dynamic>>;
-            final info = snapshot.data!['info'] as Map<String, dynamic>;
+      bottomNavigationBar: GestureDetector(
+        onTap: () async {
+          await ac.saveCourseToUserCollection(c);
+          setState(() {
+            getUserCourses();
+          });
+        },
+        child: Container(
+          height: 60,
+          decoration: const BoxDecoration(color: Colors.orange),
+          child: Center(
+            child: Text(
+              (isEnrolled) ? "Enrolled" : 'Enroll',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ),
+      ),
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FutureBuilder<Map<String, dynamic>>(
+              future: getCourseDetails(widget.courseName),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(
+                    child: Text('Error: ${snapshot.error}'),
+                  );
+                } else if (snapshot.hasData) {
+                  final modules =
+                      snapshot.data!['modules'] as List<Map<String, dynamic>>;
+                  final info = snapshot.data!['info'] as Map<String, dynamic>;
+                  String courseDis = info['courseDescription'] ?? "";
 
-            return SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Ensure courseImage URL is valid and not empty
-                  if (info.containsKey('courseImage') &&
-                      info['courseImage'] != null &&
-                      info['courseImage'].toString().isNotEmpty)
-                    Container(
-                      width: 500,
-                      height: 250,
-                      child: CachedNetworkImage(
-                        imageUrl: info['courseImage'],
-                        placeholder: (context, url) => Center(
-                          child: const CircularProgressIndicator(),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (info.containsKey('courseImage') &&
+                          info['courseImage'] != null &&
+                          info['courseImage'].toString().isNotEmpty)
+                        Container(
+                          width: 500,
+                          height: 250,
+                          child: CachedNetworkImage(
+                            imageUrl: info['courseImage'],
+                            placeholder: (context, url) => const Center(
+                              child: CircularProgressIndicator(),
+                            ),
+                            key: UniqueKey(),
+                            errorWidget: (context, url, error) => const Icon(
+                              Icons.error,
+                              color: Colors.red,
+                            ),
+                          ),
+                        )
+                      else
+                        const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text(
+                            'Image not available',
+                            style: TextStyle(fontSize: 16, color: Colors.grey),
+                          ),
                         ),
-                        key: UniqueKey(),
-                        errorWidget: (context, url, error) => const Icon(
-                          Icons.error,
-                          color: Colors.red,
+                      const Padding(
+                        padding: EdgeInsets.only(top: 10, left: 10),
+                        child: Text(
+                          'Description',
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                        //fit: BoxFit.,
                       ),
-                    )
-                  else
-                    Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Text(
-                        'Image not available',
-                        style: TextStyle(fontSize: 16, color: Colors.grey),
+                      Padding(
+                        padding: const EdgeInsets.only(
+                            top: 10, right: 15, bottom: 10, left: 10),
+                        child: RichText(
+                          text: TextSpan(
+                            text: isExpanded
+                                ? courseDis
+                                : courseDis.length > 500
+                                    ? courseDis.substring(0, 500) + ' '
+                                    : courseDis,
+                            style: const TextStyle(
+                              fontSize: 12,
+                              color: Colors.black45,
+                            ),
+                            children: courseDis.length > 500
+                                ? [
+                                    TextSpan(
+                                      text: isExpanded ? ' less' : 'more...',
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.orange,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                      recognizer: TapGestureRecognizer()
+                                        ..onTap = () {
+                                          setState(() {
+                                            isExpanded = !isExpanded;
+                                          });
+                                        },
+                                    ),
+                                  ]
+                                : [],
+                          ),
+                          textAlign: TextAlign.justify,
+                          softWrap: true,
+                        ),
                       ),
-                    ),
-                  Padding(
-                    padding: EdgeInsets.only(top: 10, left: 10),
-                    child: Text(
-                      'Description',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                      Padding(
+                        padding: EdgeInsets.only(left: width * 0.05, top: 20),
+                        child: const Text(
+                          "Modules",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(
-                        top: 10, right: 15, bottom: 10, left: 10),
-                    child: Text(
-                      "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.black45,
-                      ),
-                      textAlign: TextAlign.justify,
-                      softWrap: true,
-                      overflow: TextOverflow.visible,
-                    ),
-                  ),
-                  Padding(
-                    padding: EdgeInsets.only(left: width * 0.05, top: 20),
-                    child: Text(
-                      "Modules",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  ListView.builder(
-                    shrinkWrap: true,
-                    physics: NeverScrollableScrollPhysics(),
-                    itemCount: modules.length,
-                    itemBuilder: (context, index) {
-                      final module = modules[index];
 
-                      // Fix the vid field handling
-                      String vid = module.containsKey('vid') &&
-                              module['vid'] is String
-                          ? YoutubePlayer.convertUrlToId(module['vid']) ?? ""
-                          : "";
-
-                      return GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => Modulescreen(
-                                module: module,
-                                vid: vid,
-                              ),
+                                          ),
+                                        ),
+                                        Expanded(
+                                          flex: 8,
+                                          child: Text(
+                                            module['moduleName'] ?? '',
+                                            style: const TextStyle(
+                                              fontSize: 14,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        if (module['pdf'] != null &&
+                                            module['pdf']['url'] != null)
+                                          Expanded(
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  FontAwesomeIcons.filePdf,
+                                                  color: Colors.red,
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Text(
+                                                    module['pdf']['url'],
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                        if (module['ppt'] != null &&
+                                            module['ppt']['url'] != null)
+                                          Expanded(
+                                            child: Row(
+                                              children: [
+                                                const Icon(
+                                                  FontAwesomeIcons
+                                                      .filePowerpoint,
+                                                  color: Colors.orange,
+                                                ),
+                                                const SizedBox(width: 10),
+                                                Expanded(
+                                                  child: Text(
+                                                    module['ppt']['url'],
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
                             ),
                           );
                         },
-                        child: Padding(
-                          padding: const EdgeInsets.only(
-                              top: 10, left: 10, right: 10),
-                          child: Container(
-                            width: width * 0.95,
-                            padding: const EdgeInsets.all(8.0),
-                            decoration: BoxDecoration(
-                                color: Color.fromARGB(9, 0, 0, 0),
-                                borderRadius: BorderRadius.circular(10),
-                                border: Border.all(
-                                  color: Color.fromARGB(9, 0, 0, 0),
-                                  width: 0.25,
-                                )),
-                            child: Column(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.only(top: 5.0),
-                                  child: Row(
-                                    children: [
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 10),
-                                        child: Text(
-                                          "Module ${index + 1}: ",
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                      Text(
-                                        module['moduleName'],
-                                        style: TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      Spacer(),
-                                      Padding(
-                                        padding: EdgeInsets.only(right: 10),
-                                        child: FaIcon(
-                                          FontAwesomeIcons.chevronDown,
-                                          color: Colors.orange,
-                                          size: 15,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Padding(
-                                  padding: const EdgeInsets.only(bottom: 8.0),
-                                  child: Row(
-                                    children: [
-                                      Padding(
-                                        padding:
-                                            const EdgeInsets.only(left: 13.0),
-                                        child: Text(
-                                          modules.length.toString() +
-                                              " Items  ",
-                                          style: TextStyle(
-                                              color: Colors.grey, fontSize: 12),
-                                        ),
-                                      ),
-                                      Icon(Icons.circle,
-                                          size: 5, color: Colors.grey),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ],
+                      ),
+                    ],
+                  );
+                } else {
+                  return const Center(child: Text('No data found.'));
+                }
+              },
+            ),
+            const Padding(
+              padding: EdgeInsets.only(left: 20, top: 20),
+              child: Text(
+                'Write a review',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
-            );
-          } else {
-            return const Center(child: Text('No data found.'));
-          }
-        },
+            ),
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                border: Border.all(color: Colors.orangeAccent),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: TextField(
+                controller: review,
+                decoration: const InputDecoration(
+                  hintText: 'Write your review',
+                  border: InputBorder.none,
+                ),
+                maxLines: 3,
+              ),
+            ),
+            const Padding(
+              padding: EdgeInsets.only(left: 20, top: 20),
+              child: Text(
+                'Reviews',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
-  }
-
-  String titleCase(String text) {
-    if (text.isEmpty) return text;
-
-    return text
-        .split(' ')
-        .map((word) => word[0].toUpperCase() + word.substring(1).toLowerCase())
-        .join(' ');
   }
 }

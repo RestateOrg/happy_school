@@ -317,7 +317,7 @@ class _UploadCourseState extends State<UploadCourse> {
       // Ensure the courseNames document exists
       await courseNamesRef.set({}, SetOptions(merge: true));
 
-      // Get existing course names data
+
       final courseNamesDoc = await courseNamesRef.get();
       final Map<String, dynamic> courseNamesData = courseNamesDoc.data() ?? {};
 
@@ -357,7 +357,7 @@ class _UploadCourseState extends State<UploadCourse> {
         "faqs": faqsForFirestore,
       });
 
-      // Upload modules and their content
+
       int moduleSerialNumber = 1;
 
       for (var module in modules.entries) {
@@ -365,16 +365,6 @@ class _UploadCourseState extends State<UploadCourse> {
         final Map<String, dynamic> moduleData = module.value;
         final List<dynamic> moduleContent = moduleData['content'] ?? [];
 
-        final moduleRef = await FirebaseFirestore.instance
-            .collection("Content")
-            .doc("Content")
-            .collection("Courses")
-            .doc(coursename)
-            .collection("Modules")
-            .doc(moduleName);
-        int contentSerialNumber = 1;
-
-        // Create a map for the module content with serial numbers
         Map<String, dynamic> moduleContentData = {'s.no': moduleSerialNumber};
 
         for (var content in moduleContent) {
@@ -408,10 +398,6 @@ class _UploadCourseState extends State<UploadCourse> {
             };
           }
 
-          contentSerialNumber++;
-        }
-
-        // Upload the module content to Firestore
         await moduleRef.set(moduleContentData, SetOptions(merge: true));
         moduleSerialNumber++;
       }

@@ -118,7 +118,7 @@ class _UserhomeState extends State<Userhome> {
         },
         children: [
           Mainhome(),
-          Usercourses(),
+          UserCourses(),
           Userleaderboard(),
           Userfeed(),
         ],
