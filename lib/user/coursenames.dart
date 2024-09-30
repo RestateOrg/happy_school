@@ -281,59 +281,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                           ),
                         ),
                       ),
-                      ListView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        itemCount: modules.length,
-                        itemBuilder: (context, index) {
-                          final module = modules[index];
-                          String vid = module.containsKey('vid') &&
-                                  module['vid']['url'] is String
-                              ? YoutubePlayer.convertUrlToId(
-                                      module['vid']['url']) ??
-                                  ""
-                              : "";
 
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => Modulescreen(
-                                    module: module,
-                                    vid: vid,
-                                  ),
-                                ),
-                              );
-                            },
-                            child: Padding(
-                              padding: const EdgeInsets.only(
-                                  top: 10, left: 10, right: 10),
-                              child: Container(
-                                width: width * 0.95,
-                                padding: const EdgeInsets.all(8.0),
-                                decoration: BoxDecoration(
-                                  color: const Color.fromARGB(9, 0, 0, 0),
-                                  borderRadius: BorderRadius.circular(10),
-                                  border: Border.all(
-                                    color: const Color.fromARGB(9, 0, 0, 0),
-                                    width: 0.25,
-                                  ),
-                                ),
-                                child: Column(
-                                  children: [
-                                    Row(
-                                      children: [
-                                        Expanded(
-                                          flex: 2,
-                                          child: Text(
-                                            "Module " +
-                                                module['s.no'].toString() +
-                                                ":",
-                                            style: const TextStyle(
-                                              fontSize: 14,
-                                              fontWeight: FontWeight.bold,
-                                            ),
                                           ),
                                         ),
                                         Expanded(
@@ -395,7 +343,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
                                     ),
                                   ],
                                 ),
-                              ),
                             ),
                           );
                         },

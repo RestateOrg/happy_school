@@ -305,13 +305,8 @@ class _UploadCourseState extends State<UploadCourse> {
     }
 
     try {
+      // Get the course banner image URL
       String courseBannerURL = await _getimageUrl();
-
-      final courseRef = FirebaseFirestore.instance
-          .collection("Content")
-          .doc("Content")
-          .collection("Courses")
-          .doc(coursename);
 
       final courseNamesRef = FirebaseFirestore.instance
           .collection("Content")
@@ -322,17 +317,21 @@ class _UploadCourseState extends State<UploadCourse> {
       // Ensure the courseNames document exists
       await courseNamesRef.set({}, SetOptions(merge: true));
 
+
       final courseNamesDoc = await courseNamesRef.get();
       final Map<String, dynamic> courseNamesData = courseNamesDoc.data() ?? {};
 
+      // Generate a unique course ID
       String uniqueCourseId;
       do {
         uniqueCourseId = DateTime.now().millisecondsSinceEpoch.toString();
       } while (courseNamesData.containsKey(uniqueCourseId));
 
+      // Update the courseNames document with the new course
       courseNamesData[uniqueCourseId] = coursename;
       await courseNamesRef.set(courseNamesData);
 
+      // Prepare FAQs for Firestore
       final List<Map<String, dynamic>> faqsForFirestore = userFaqs.map((faq) {
         return {
           'question': faq['question'],
@@ -340,13 +339,24 @@ class _UploadCourseState extends State<UploadCourse> {
         };
       }).toList();
 
-      await courseRef.collection("courseinfo").doc("info").set({
+      // Upload course information
+      await FirebaseFirestore.instance
+          .collection("Content")
+          .doc("Content")
+          .collection("Courses")
+          .doc(coursename)
+          .collection("courseinfo")
+          .doc("info")
+          .set({
         "courseName": coursename,
         "courseId": uniqueCourseId,
         "courseImage": courseBannerURL,
+        "totalrating": 0,
+        "reviewcount": 0,
         "courseDescription": courseDescription.text.trim(),
         "faqs": faqsForFirestore,
       });
+
 
       int moduleSerialNumber = 1;
 
@@ -355,21 +365,20 @@ class _UploadCourseState extends State<UploadCourse> {
         final Map<String, dynamic> moduleData = module.value;
         final List<dynamic> moduleContent = moduleData['content'] ?? [];
 
-        final moduleRef = courseRef.collection("Modules").doc(moduleName);
-        int contentSerialNumber = 1;
-
         Map<String, dynamic> moduleContentData = {'s.no': moduleSerialNumber};
 
         for (var content in moduleContent) {
           final String fileName = content['fileName'];
 
           if (content['type'] == 'video') {
+            // Handle YouTube video URLs
             final String youtubeUrl = content['youtubeUrl'];
             moduleContentData[fileName] = {
               'url': youtubeUrl,
               's.no': contentSerialNumber,
             };
           } else {
+            // Handle file uploads
             final File file = content['file'];
             final String fileExtension = file.path.split('.').last;
             final String fullFileName = '$fileName.$fileExtension';
@@ -377,8 +386,11 @@ class _UploadCourseState extends State<UploadCourse> {
             final storageRef = FirebaseStorage.instance
                 .ref()
                 .child('Coursecontent/$coursename/$moduleName/$fullFileName');
+
+            // Upload file to Firebase Storage
             await storageRef.putFile(file);
 
+            // Get the download URL
             final String downloadURL = await storageRef.getDownloadURL();
             moduleContentData[fileName] = {
               'url': downloadURL,
@@ -386,14 +398,14 @@ class _UploadCourseState extends State<UploadCourse> {
             };
           }
 
-          contentSerialNumber++;
-        }
         await moduleRef.set(moduleContentData, SetOptions(merge: true));
         moduleSerialNumber++;
       }
 
+      // Log success message
       print("Course and modules uploaded successfully.");
     } catch (e) {
+      // Handle any errors
       print("Failed to upload course: $e");
     }
   }
@@ -447,7 +459,7 @@ class _UploadCourseState extends State<UploadCourse> {
                           ),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Color.fromARGB(255, 255, 249, 222),
+                              color: Color.fromARGB(255, 255, 238, 222),
                               borderRadius: BorderRadius.circular(10.0),
                             ),
                             height: width * 0.78,
@@ -531,7 +543,7 @@ class _UploadCourseState extends State<UploadCourse> {
                           ),
                           child: Container(
                             decoration: BoxDecoration(
-                              color: Color.fromARGB(255, 255, 249, 222),
+                              color: Color.fromARGB(255, 255, 238, 222),
                               borderRadius: BorderRadius.circular(10.0),
                             ),
                             height: width * 0.78,
