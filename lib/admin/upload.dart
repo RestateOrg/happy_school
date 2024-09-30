@@ -77,7 +77,7 @@ class UploadPage extends StatelessWidget {
                       Icon(Icons.work, size: 60, color: Colors.green),
                       SizedBox(height: 10),
                       Text(
-                        'Upload Workshop',
+                        'Upload Challenge',
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.bold,

@@ -5,7 +5,9 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:happy_school/admin/Adminhomescreen.dart';
+import 'package:happy_school/admin/Announcements.dart';
 import 'package:happy_school/admin/Coursesandworkshops.dart';
+import 'package:happy_school/admin/Feed.dart';
 import 'package:happy_school/admin/Profile.dart';
 import 'package:happy_school/admin/schools.dart';
 import 'package:happy_school/admin/upload.dart';
@@ -137,7 +139,7 @@ class _AdminhomeState extends State<Adminhome> {
           Coursesandworkshops(),
           UploadPage(),
           Schools(),
-          Profile(),
+          Feed(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -165,8 +167,8 @@ class _AdminhomeState extends State<Adminhome> {
             label: 'Schools',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.person),
-            label: 'Profile',
+            icon: FaIcon(FontAwesomeIcons.globe),
+            label: 'Feed',
           ),
         ],
         currentIndex: _selectedIndex,
@@ -274,7 +276,7 @@ class CustomDrawer extends StatelessWidget {
                             onTap: () {},
                             child: Icon(
                               Icons.account_circle,
-                              color: Colors.amber,
+                              color: Colors.orange,
                               size: 60,
                             ),
                           ),
@@ -356,19 +358,21 @@ class CustomDrawer extends StatelessWidget {
                 ),
                 ListTile(
                   leading: Icon(
-                    Icons.currency_rupee,
+                    Icons.announcement,
                     color: Colors.black,
                   ),
                   title: Text(
-                    'Revenue',
+                    'Announcements',
                     style: TextStyle(
                       fontFamily: 'Roboto',
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   onTap: () {
-                    handleNavigation(2);
-                    Navigator.pop(context);
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => Announcements()));
                   },
                 ),
                 Divider(

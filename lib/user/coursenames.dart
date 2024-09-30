@@ -146,22 +146,25 @@ class CoursesScreen extends StatelessWidget {
                     ),
                   ),
                   ListView.builder(
-                    shrinkWrap:
-                        true, // This ensures the ListView takes up only the necessary space
-                    physics:
-                        NeverScrollableScrollPhysics(), // Disables ListView's own scrolling
+                    shrinkWrap: true,
+                    physics: NeverScrollableScrollPhysics(),
                     itemCount: modules.length,
                     itemBuilder: (context, index) {
                       final module = modules[index];
-                      String vid =
-                          YoutubePlayer.convertUrlToId(module['vid']) ?? "";
+
+                      // Fix the vid field handling
+                      String vid = module.containsKey('vid') &&
+                              module['vid'] is String
+                          ? YoutubePlayer.convertUrlToId(module['vid']) ?? ""
+                          : "";
+
                       return GestureDetector(
                         onTap: () {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => Modulescreen(
-                                module: module, // Pass the whole module data
+                                module: module,
                                 vid: vid,
                               ),
                             ),
@@ -232,7 +235,7 @@ class CoursesScreen extends StatelessWidget {
                                           size: 5, color: Colors.grey),
                                     ],
                                   ),
-                                )
+                                ),
                               ],
                             ),
                           ),

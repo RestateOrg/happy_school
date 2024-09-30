@@ -13,13 +13,19 @@ class _SchoolsState extends State<Schools> {
   // Reference to the Firebase Firestore collection "schools"
   final CollectionReference schoolsRef =
       FirebaseFirestore.instance.collection('Schools');
+
   TextEditingController schoolNameController = TextEditingController();
   TextEditingController noOfUsersController = TextEditingController();
+  TextEditingController searchController =
+      TextEditingController(); // Search controller
+  String searchQuery = ''; // Query for searching schools
+
   Future<void> addschool() {
     schoolsRef.add({
       'SchoolName': schoolNameController.text,
       'No.ofUsers': int.tryParse(noOfUsersController.text) ?? 0,
       'UsersCount': int.tryParse(noOfUsersController.text) ?? 0,
+      'currentlyenrolled': 0,
     });
     schoolNameController.clear();
     noOfUsersController.clear();
@@ -32,82 +38,104 @@ class _SchoolsState extends State<Schools> {
       backgroundColor: Colors.white,
       body: Column(
         children: [
+          // Search bar to search for schools
+          Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: TextField(
+              controller: searchController,
+              decoration: InputDecoration(
+                hintText: 'Search schools',
+                prefixIcon: Icon(Icons.search, color: Colors.orange),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: BorderSide(color: Colors.grey),
+                ),
+              ),
+              onChanged: (query) {
+                setState(() {
+                  searchQuery = query.toLowerCase(); // Update search query
+                });
+              },
+            ),
+          ),
+
           // Row with Add School button
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
               Padding(
-                  padding: const EdgeInsets.all(8.0),
-                  child: GestureDetector(
-                    onTap: () {
-                      showDialog(
-                        context: context,
-                        builder: (BuildContext context) {
-                          return AlertDialog(
-                            backgroundColor: Colors.white,
-                            title: const Text('Add School'),
-                            content: SingleChildScrollView(
-                              child: ListBody(
-                                children: <Widget>[
-                                  TextField(
-                                    controller: schoolNameController,
-                                    decoration: InputDecoration(
-                                      labelText: 'School Name',
-                                      hintText: 'Enter the school name',
-                                    ),
+                padding: const EdgeInsets.all(8.0),
+                child: GestureDetector(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (BuildContext context) {
+                        return AlertDialog(
+                          backgroundColor: Colors.white,
+                          title: const Text('Add School'),
+                          content: SingleChildScrollView(
+                            child: ListBody(
+                              children: <Widget>[
+                                TextField(
+                                  controller: schoolNameController,
+                                  decoration: InputDecoration(
+                                    labelText: 'School Name',
+                                    hintText: 'Enter the school name',
                                   ),
-                                  SizedBox(height: 10),
-                                  TextField(
-                                    controller: noOfUsersController,
-                                    decoration: InputDecoration(
-                                      labelText: 'No. of Users',
-                                      hintText: 'Enter No.of Users',
-                                    ),
+                                ),
+                                SizedBox(height: 10),
+                                TextField(
+                                  controller: noOfUsersController,
+                                  decoration: InputDecoration(
+                                    labelText: 'No. of Users',
+                                    hintText: 'Enter No.of Users',
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            actions: <Widget>[
-                              TextButton(
-                                child: const Text('Cancel',
-                                    style: TextStyle(color: Colors.black)),
-                                onPressed: () {
-                                  Navigator.of(context).pop();
-                                },
-                              ),
-                              TextButton(
-                                child: const Text('Add',
-                                    style: TextStyle(color: Colors.orange)),
-                                onPressed: () {
-                                  addschool();
-                                  Navigator.of(context).pop();
-                                },
-                              ),
-                            ],
-                          );
-                        },
-                      );
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                          color: Colors.orange,
-                          borderRadius: BorderRadius.circular(10)),
-                      child: Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Row(
-                          children: const [
-                            Icon(
-                              Icons.add,
-                              color: Colors.white,
+                          ),
+                          actions: <Widget>[
+                            TextButton(
+                              child: const Text('Cancel',
+                                  style: TextStyle(color: Colors.black)),
+                              onPressed: () {
+                                Navigator.of(context).pop();
+                              },
                             ),
-                            SizedBox(width: 5),
-                            Text("Add School",
-                                style: TextStyle(color: Colors.white)),
+                            TextButton(
+                              child: const Text('Add',
+                                  style: TextStyle(color: Colors.orange)),
+                              onPressed: () {
+                                addschool();
+                                Navigator.of(context).pop();
+                              },
+                            ),
                           ],
-                        ),
+                        );
+                      },
+                    );
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(10)),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8.0),
+                      child: Row(
+                        children: const [
+                          Icon(
+                            Icons.add,
+                            color: Colors.white,
+                          ),
+                          SizedBox(width: 5),
+                          Text("Add School",
+                              style: TextStyle(color: Colors.white)),
+                        ],
                       ),
                     ),
-                  ))
+                  ),
+                ),
+              )
             ],
           ),
 
@@ -130,13 +158,20 @@ class _SchoolsState extends State<Schools> {
                 // List of schools fetched from Firestore
                 final List<DocumentSnapshot> schoolDocs = snapshot.data!.docs;
 
+                // Filter the schools based on the search query
+                final filteredSchools = schoolDocs.where((doc) {
+                  var schoolData = doc.data() as Map<String, dynamic>;
+                  String schoolName = schoolData['SchoolName'] ?? '';
+                  return schoolName.toLowerCase().contains(searchQuery);
+                }).toList();
+
                 return ListView.builder(
-                  itemCount: schoolDocs.length,
+                  itemCount: filteredSchools.length,
                   itemBuilder: (context, index) {
                     var schoolData =
-                        schoolDocs[index].data() as Map<String, dynamic>;
-                    String schoolName = schoolData['SchoolName'] ??
-                        'Unnamed School'; // Replace with the correct field name
+                        filteredSchools[index].data() as Map<String, dynamic>;
+                    String schoolName =
+                        schoolData['SchoolName'] ?? 'Unnamed School';
 
                     return Padding(
                       padding: const EdgeInsets.symmetric(
@@ -184,7 +219,7 @@ class _SchoolsState extends State<Schools> {
                                       onPressed: () async {
                                         // Delete the school from Firestore
                                         await schoolsRef
-                                            .doc(schoolDocs[index].id)
+                                            .doc(filteredSchools[index].id)
                                             .delete();
                                       },
                                     ),

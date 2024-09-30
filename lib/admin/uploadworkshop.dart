@@ -385,7 +385,7 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
     final courseRef = FirebaseFirestore.instance
         .collection("Content")
         .doc("Content")
-        .collection("Workshops")
+        .collection("Challenges")
         .doc(coursename); // Using course name as document ID
 
     try {
@@ -393,8 +393,8 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
       final courseNamesRef = FirebaseFirestore.instance
           .collection("Content")
           .doc("Content")
-          .collection("workshopNames")
-          .doc("workshopNames");
+          .collection("ChallengeNames")
+          .doc("ChallengeNames");
 
       final courseNamesDoc = await courseNamesRef.get();
       final courseNamesData = courseNamesDoc.data() ?? {};
@@ -410,11 +410,11 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
       await courseNamesRef.set(courseNamesData);
 
       // Set the course info
-      await courseRef.collection("workshopinfo").doc("info").set({
-        "workshopName": coursename,
-        "workshopDescription": workshopdescription.text,
-        "workshopId": uniqueCourseId,
-        "workshopImage": courseBannerURL,
+      await courseRef.collection("challengeinfo").doc("info").set({
+        "ChallengeName": coursename,
+        "ChallengeDescription": workshopdescription.text,
+        "ChallengeId": uniqueCourseId,
+        "ChallengeImage": courseBannerURL,
       });
 
       for (var module in modules.entries) {
@@ -447,9 +447,8 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
             final fullFileName = '$fileName.$fileExtension';
 
             // Upload file to Firebase Storage with correct extension
-            final storageRef = FirebaseStorage.instance
-                .ref()
-                .child('Workshopcontent/$coursename/$moduleName/$fullFileName');
+            final storageRef = FirebaseStorage.instance.ref().child(
+                'Challengecontent/$coursename/$moduleName/$fullFileName');
             await storageRef.putFile(file);
 
             // Get the download URL of the uploaded file
@@ -522,7 +521,7 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.orange,
-        title: const Text("Upload New Workshop"),
+        title: const Text("Upload New Challenge"),
       ),
       bottomNavigationBar: GestureDetector(
         onTap: () async {
@@ -533,8 +532,8 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
           setState(() {
             isloading = false;
           });
-          _showDocumentIdPopup2("Workshop Uploaded Successfully",
-              "Workshop Uploaded Successfully");
+          _showDocumentIdPopup2("Challenge Uploaded Successfully",
+              "Challenge Uploaded Successfully");
         },
         child: Container(
           height: 60,
@@ -561,7 +560,7 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
                           ),
                           child: Container(
                               decoration: BoxDecoration(
-                                color: Color.fromARGB(255, 255, 249, 222),
+                                color: Color.fromARGB(255, 255, 238, 222),
                                 borderRadius: BorderRadius.circular(10.0),
                               ),
                               height: width * 0.78,
@@ -581,7 +580,7 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
                                         Positioned(
                                             top: width * 0.02,
                                             left: width * 0.03,
-                                            child: Text("Workshop Banner",
+                                            child: Text("Challenge Banner",
                                                 style: TextStyle(
                                                     color: Colors.white,
                                                     fontFamily: 'Roboto',
@@ -637,7 +636,7 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
                           ),
                           child: Container(
                               decoration: BoxDecoration(
-                                color: Color.fromARGB(255, 255, 249, 222),
+                                color: Color.fromARGB(255, 255, 238, 222),
                                 borderRadius: BorderRadius.circular(10.0),
                               ),
                               height: width * 0.78,
@@ -657,7 +656,7 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
                                         Positioned(
                                             top: width * 0.02,
                                             left: width * 0.03,
-                                            child: Text("Workshop Banner",
+                                            child: Text("Challenge Banner",
                                                 style: TextStyle(
                                                     color: Colors.white,
                                                     fontFamily: 'Roboto',
@@ -723,8 +722,8 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
                       child: TextField(
                         controller: courseName,
                         decoration: const InputDecoration(
-                          hintText: 'Enter Workshop Name',
-                          labelText: 'Enter Workshop Name',
+                          hintText: 'Enter Challenge Name',
+                          labelText: 'Enter Challenge Name',
                         ),
                       ),
                     ),
@@ -736,8 +735,8 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
                       child: TextField(
                         controller: workshopdescription,
                         decoration: const InputDecoration(
-                          hintText: 'Enter Workshop Description',
-                          labelText: 'Enter Workshop Description',
+                          hintText: 'Enter Challenge Description',
+                          labelText: 'Enter Challenge Description',
                         ),
                       ),
                     ),
