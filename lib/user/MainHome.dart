@@ -592,22 +592,29 @@ class _MainhomeState extends State<Mainhome> {
                               color: Colors.white,
                               elevation: 4,
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(
+                                    12), // Set the height for the image
                               ),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  CachedNetworkImage(
-                                    key: UniqueKey(),
-                                    imageUrl: announcementData[
-                                        'imageUrl'], // Assuming 'img' holds the image URL
-                                    placeholder: (context, url) => const Center(
-                                        child: CircularProgressIndicator()),
-                                    errorWidget: (context, url, error) =>
-                                        const Icon(Icons.error),
-                                    height: 150, // Set the height for the image
+                                  Container(
+                                    height: 150,
                                     width: double.infinity,
-                                    //fit: BoxFit.cover,
+                                    color: Colors.black12,
+                                    child: CachedNetworkImage(
+                                      key: UniqueKey(),
+                                      imageUrl: announcementData[
+                                          'imageUrl'], // Assuming 'img' holds the image URL
+                                      placeholder: (context, url) =>
+                                          const Center(
+                                              child:
+                                                  CircularProgressIndicator()),
+                                      errorWidget: (context, url, error) =>
+                                          const Icon(Icons.error),
+
+                                      //fit: BoxFit.cover,
+                                    ),
                                   ),
                                   Padding(
                                     padding: const EdgeInsets.all(8.0),
