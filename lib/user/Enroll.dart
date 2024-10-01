@@ -12,11 +12,7 @@ class AddCourse {
 
       if (user != null) {
         // Reference to the user's course sub-collection in Firestore
-        DocumentReference courseDocRef = _firestore
-            .collection('Users')
-            .doc(user.email) // Use the user's email as the document ID
-            .collection('course')
-            .doc(courseName); // Use courseName as the document ID
+        // Use courseName as the document ID
 
         DocumentReference courseNamesDocRef = _firestore
             .collection('Users')
