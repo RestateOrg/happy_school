@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
@@ -61,35 +62,13 @@ class _ModulescreenState extends State<Modulescreen> {
     );
   }
 
-  // Function to show a list of available files and open the selected file
-  void _showFileSelectionDialog(
-      BuildContext context, List<String> fileKeys, bool isPdf) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(isPdf ? 'Select PDF' : 'Select PPT'),
-          content: SizedBox(
-            width: double.maxFinite,
-            child: ListView.builder(
-              shrinkWrap: true,
-              itemCount: fileKeys.length,
-              itemBuilder: (context, index) {
-                return ListTile(
-                  title: Text(fileKeys[index]),
-                  onTap: () {
-                    Navigator.of(context).pop(); // Close the dialog
-                    // Open the selected file based on its type
-                    isPdf
-                        ? _openPDFPage(context, widget.module[fileKeys[index]])
-                        : _openPPTPage(context, widget.module[fileKeys[index]]);
-                  },
-                );
-              },
-            ),
-          ),
-        );
-      },
+  // Function to open a video
+  void _openVideoPage(BuildContext context, String videoUrl) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => YoutubeVideoScreen(vid: videoUrl),
+      ),
     );
   }
 
@@ -98,68 +77,86 @@ class _ModulescreenState extends State<Modulescreen> {
     // Log the received module data for debugging
     print('Received module data: ${widget.module}');
 
-    // Extract keys for PDFs and PPTs
-    List<String> pdfKeys = widget.module.keys
-        .where((key) => key.toLowerCase().contains('pdf'))
-        .toList();
-    List<String> pptKeys = widget.module.keys
-        .where((key) => key.toLowerCase().contains('ppt'))
-        .toList();
+    // Extract the 'fields' array from the module map
+    List<dynamic> fields = widget.module['fields'] ?? [];
+    final width = MediaQuery.of(context).size.width;
 
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         title: Text(widget.module['moduleName'] ?? 'Module Details'),
+        backgroundColor: Colors.orange,
       ),
-      body: Column(
-        children: [
-          // Display the YouTube player if the video ID is valid
-          if (widget.vid.isNotEmpty)
-            YoutubePlayer(
-              controller: _controller,
-              showVideoProgressIndicator: true,
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'Invalid or missing video URL.',
-                style: TextStyle(fontSize: 16, color: Colors.red),
-                textAlign: TextAlign.center,
-              ),
-            ),
+      body: ListView.builder(
+        itemCount: fields.length,
+        itemBuilder: (context, index) {
+          // Extract the fieldName and url for each field in the fields array
+          String fieldName = fields[index]['fieldName'] ?? 'Unknown Field';
+          String url = fields[index]['url'] ?? '';
+          String? id = YoutubePlayer.convertUrlToId(url);
 
-          // Button to show available PDFs
-          if (pdfKeys.isNotEmpty)
-            ElevatedButton(
-              onPressed: () => _showFileSelectionDialog(context, pdfKeys, true),
-              child: Text('Open PDF'),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'No PDFs available.',
-                style: TextStyle(fontSize: 16, color: Colors.blueGrey),
+          return GestureDetector(
+            onTap: () {
+              if (fieldName.toLowerCase().contains('pdf')) {
+                _openPDFPage(context, url);
+              } else if (fieldName.toLowerCase().contains('ppt')) {
+                _openPPTPage(context, url);
+              } else if (fieldName.toLowerCase().contains('video')) {
+                _openVideoPage(context, id!); // Extract video ID from URL
+              }
+              // You can add more types of resources as needed (e.g., image)
+            },
+            child: Padding(
+              padding: const EdgeInsets.only(top: 10, left: 10, right: 10),
+              child: Container(
+                width: width * 0.95,
+                padding: const EdgeInsets.all(8.0),
+                decoration: BoxDecoration(
+                  color: const Color.fromARGB(9, 0, 0, 0),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(
+                    color: const Color.fromARGB(9, 0, 0, 0),
+                    width: 0.25,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 2,
+                          child: FaIcon(
+                            (fieldName.toLowerCase().contains('pdf'))
+                                ? FontAwesomeIcons.filePdf
+                                : (fieldName.toLowerCase().contains('ppt'))
+                                    ? FontAwesomeIcons.filePowerpoint
+                                    : (fieldName
+                                            .toLowerCase()
+                                            .contains('video'))
+                                        ? FontAwesomeIcons.video
+                                        : FontAwesomeIcons.image,
+                            color: Colors.orange,
+                            size: 18,
+                          ),
+                        ),
+                        Expanded(
+                          flex: 8,
+                          child: Text(
+                            fieldName,
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
               ),
             ),
-
-          // Button to show available PPTs
-          if (pptKeys.isNotEmpty)
-            ElevatedButton(
-              onPressed: () =>
-                  _showFileSelectionDialog(context, pptKeys, false),
-              child: Text('Open PPT'),
-            )
-          else
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Text(
-                'No PPTs available.',
-                style: TextStyle(fontSize: 16, color: Colors.blueGrey),
-              ),
-            ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -176,6 +173,7 @@ class PDFScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: Text('PDF Viewer'),
+        backgroundColor: Colors.orange,
       ),
       body: SfPdfViewer.network(
           pdfUrl), // Display the PDF using Syncfusion PDF viewer
@@ -184,6 +182,7 @@ class PDFScreen extends StatelessWidget {
 }
 
 // PPT viewing screen
+// PPT viewing screen using Google Docs Viewer or Office 365 Viewer
 class PPTScreen extends StatelessWidget {
   final String pptUrl; // URL of the PPT document
 
@@ -191,29 +190,60 @@ class PPTScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Using Google Docs or Office 365 viewer to open PPT URLs
+    String fileViewerUrl =
+        'https://docs.google.com/gview?embedded=true&url=$pptUrl';
+
     return Scaffold(
       appBar: AppBar(
-        title: Text('PPT Viewer'),
+        title: const Text('PPT Viewer'),
+        backgroundColor: Colors.orange,
       ),
-      body: Container(
-        child: InAppWebView(
-          initialUrlRequest: URLRequest(
-            url: WebUri.uri(
-                Uri.parse(pptUrl)), // Ensure the URL is correctly parsed
-          ),
-          onLoadStart: (controller, url) {
-            // Show a loading message when the PPT starts loading
-            print('PPT is loading: $url');
-          },
-          onLoadStop: (controller, url) {
-            // Log when the PPT has finished loading
-            print('PPT loaded: $url');
-          },
-          onLoadError: (controller, url, code, message) {
-            // Handle errors during PPT loading
-            print('Error loading PPT: $message');
-          },
+      body: InAppWebView(
+        initialUrlRequest: URLRequest(
+          url: WebUri.uri(
+              Uri.parse(fileViewerUrl)), // Open the file via Google Docs viewer
         ),
+        onLoadStart: (controller, url) {
+          // Show a loading message when the PPT starts loading
+          print('PPT is loading: $url');
+        },
+        onLoadStop: (controller, url) {
+          // Log when the PPT has finished loading
+          print('PPT loaded: $url');
+        },
+        onLoadError: (controller, url, code, message) {
+          // Handle errors during PPT loading
+          print('Error loading PPT: $message');
+        },
+      ),
+    );
+  }
+}
+
+// Video viewing screen (YouTube)
+class YoutubeVideoScreen extends StatelessWidget {
+  final String vid; // YouTube video ID
+
+  const YoutubeVideoScreen({Key? key, required this.vid}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    YoutubePlayerController _controller = YoutubePlayerController(
+      initialVideoId: vid,
+      flags: const YoutubePlayerFlags(
+        autoPlay: false,
+      ),
+    );
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Video Player'),
+        backgroundColor: Colors.orange,
+      ),
+      body: YoutubePlayer(
+        controller: _controller,
+        showVideoProgressIndicator: true,
       ),
     );
   }

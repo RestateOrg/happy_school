@@ -255,8 +255,7 @@ class _UserCoursesState extends State<UserCourses> {
                                           Container(
                                             width: width * 0.9,
                                             height: width * 0.45,
-                                            color: const Color.fromARGB(
-                                                255, 181, 179, 179),
+                                            color: Colors.black12,
                                             child: CachedNetworkImage(
                                               imageUrl:
                                                   info['courseImage'] ?? '',
