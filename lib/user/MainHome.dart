@@ -8,8 +8,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:happy_school/user/Enroll.dart';
 import 'package:happy_school/user/coursenames.dart';
+import 'package:happy_school/user/showAnnouncements.dart';
 import 'package:happy_school/user/showChallenges.dart';
 import 'package:happy_school/utils/hexcolor.dart';
 
@@ -21,8 +21,6 @@ class Mainhome extends StatefulWidget {
 }
 
 class _MainhomeState extends State<Mainhome> {
-  AddCourse ac = AddCourse();
-
   late PageController _pageController;
   late int currentIndex = 0;
   late Timer timer;
@@ -439,34 +437,6 @@ class _MainhomeState extends State<Mainhome> {
                     ),
                   ),
                   Spacer(),
-                  Padding(
-                    padding: const EdgeInsets.only(right: 8.0),
-                    child: GestureDetector(
-                      onTap: () async {
-                        await ac
-                            .saveCourseToUserCollection(course['courseName']);
-                        setState(() {
-                          getUserCourses();
-                        });
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            vertical: 5, horizontal: 10), // Adjusted padding
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(20),
-                          color: HexColor("#FF6B00"),
-                        ),
-                        child: Text(
-                          (isEnrolled) ? "Enrolled" : 'Enroll',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
                 ],
               ),
             ),
@@ -588,45 +558,56 @@ class _MainhomeState extends State<Mainhome> {
                           },
                           itemBuilder: (context, index) {
                             final announcementData = snapshot.data![index];
-                            return Card(
-                              color: Colors.white,
-                              elevation: 4,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                    12), // Set the height for the image
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    height: 150,
-                                    width: double.infinity,
-                                    color: Colors.black12,
-                                    child: CachedNetworkImage(
-                                      key: UniqueKey(),
-                                      imageUrl: announcementData[
-                                          'imageUrl'], // Assuming 'img' holds the image URL
-                                      placeholder: (context, url) =>
-                                          const Center(
-                                              child:
-                                                  CircularProgressIndicator()),
-                                      errorWidget: (context, url, error) =>
-                                          const Icon(Icons.error),
-
-                                      //fit: BoxFit.cover,
-                                    ),
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => Showannouncements(
+                                        announcementData: announcementData),
                                   ),
-                                  Padding(
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Text(
-                                      announcementData['title'] ?? 'No Title',
-                                      style: const TextStyle(
-                                        fontSize: 16,
-                                        fontWeight: FontWeight.bold,
+                                );
+                              },
+                              child: Card(
+                                color: Colors.white,
+                                elevation: 4,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(
+                                      12), // Set the height for the image
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Container(
+                                      height: 150,
+                                      width: double.infinity,
+                                      color: Colors.black12,
+                                      child: CachedNetworkImage(
+                                        key: UniqueKey(),
+                                        imageUrl: announcementData[
+                                            'imageUrl'], // Assuming 'img' holds the image URL
+                                        placeholder: (context, url) =>
+                                            const Center(
+                                                child:
+                                                    CircularProgressIndicator()),
+                                        errorWidget: (context, url, error) =>
+                                            const Icon(Icons.error),
+
+                                        //fit: BoxFit.cover,
                                       ),
                                     ),
-                                  ),
-                                ],
+                                    Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Text(
+                                        announcementData['title'] ?? 'No Title',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             );
                           },

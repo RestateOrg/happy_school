@@ -10,8 +10,9 @@ import 'package:flutter_rating_bar/flutter_rating_bar.dart';
 import 'package:flutter_rating_stars/flutter_rating_stars.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:happy_school/admin/Profile.dart';
-import 'package:happy_school/user/Enroll.dart';
 import 'package:happy_school/user/moduleScreen.dart';
+import 'package:happy_school/user/userPostUpload.dart';
+import 'package:happy_school/user/userRaiseTocken.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 class CoursesScreen extends StatefulWidget {
@@ -31,7 +32,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
   bool isFaqExpanded = false;
   TextEditingController reviewController = TextEditingController();
   double rating = 0.0; // Initial rating value
-  AddCourse ac = AddCourse();
 
   final List<String> usersCourses = []; // List to store the course names
   final List<dynamic> Cinfo = [];
@@ -41,10 +41,11 @@ class _CoursesScreenState extends State<CoursesScreen> {
   bool isMExpanded = false;
   @override
   void initState() {
-    super.initState();
-    getUserCourses(); // Call the function to fetch and store courses
-    //getCourseDetails(widgit.courseName);
+    getUserName();
     populateRList(widget.courseName);
+    getCourseDetails(widget.courseName);
+    //getReviews(widget.courseName);
+    super.initState();
   }
 
   @override
@@ -53,54 +54,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
     super.dispose();
   }
 
-  // Fetch and store the course names in usersCourses list
-  Future<void> getUserCourses() async {
-    try {
-      // Get the currently authenticated user
-      final User? user = FirebaseAuth.instance.currentUser;
-
-      if (user == null) {
-        // Handle the case where the user is not logged in
-        return;
-      }
-
-      // Get the user's email
-      setState(() {
-        email = user.email!;
-      });
-
-      // Reference the Firestore document using the email
-      final DocumentReference courseDocRef =
-          _firestore.collection('Users').doc(email);
-
-      // Fetch course names
-      final QuerySnapshot infoSnapshot =
-          await courseDocRef.collection('courseNames').get();
-
-      // Check if there are any documents
-      if (infoSnapshot.docs.isNotEmpty) {
-        // Clear the list to avoid duplications
-        setState(() {
-          usersCourses.clear();
-          // Add fetched courses to the usersCourses list
-          usersCourses.addAll(
-            infoSnapshot.docs.map((doc) {
-              Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-              return data['courseName']
-                      ?.toString()
-                      .toLowerCase()
-                      .replaceAll(" ", "") ??
-                  '';
-            }).toList(),
-          );
-        });
-      } else {
-        print('No courses found for this user.');
-      }
-    } catch (e) {
-      print('Error: $e');
-    }
-  }
+  String username = ''; // Initialize with an empty string instead of Null
 
   Future<void> populateRList(String courseName) async {
     try {
@@ -118,14 +72,56 @@ class _CoursesScreenState extends State<CoursesScreen> {
       // Check if the collection has documents
       if (reviewsSnapshot.docs.isNotEmpty) {
         setState(() {
-          // Populate rList with the 'email' field from each document
-          rList = reviewsSnapshot.docs
-              .map((doc) => doc['email'] as String)
-              .toList();
+          // Populate rList with the document ID, which is the email
+          rList = reviewsSnapshot.docs.map((doc) => doc.id).toList();
         });
       }
     } catch (e) {
       print('Error fetching review data: $e');
+    }
+  }
+
+  Future<void> getUserName() async {
+    try {
+      // Get the currently authenticated user
+      final User? user = FirebaseAuth.instance.currentUser;
+
+      if (user == null) {
+        // Handle the case where the user is not logged in
+        return;
+      }
+
+      // Get the user's email
+      setState(() {
+        email = user.email!;
+      });
+
+      // Reference the Firestore document using the email
+      final DocumentReference userDocRef = _firestore
+          .collection('Users')
+          .doc(email)
+          .collection('userinfo')
+          .doc('userinfo');
+
+      // Fetch user info
+      final DocumentSnapshot userDocSnapshot = await userDocRef.get();
+
+      if (userDocSnapshot.exists) {
+        // Safely converting the document data
+        final userData = userDocSnapshot.data() as Map<String, dynamic>?;
+
+        // Assuming 'name' is the field you want to retrieve
+        String userName = userData?['Name'] ?? '';
+
+        setState(() {
+          // You can save or use the userName as needed
+          username = userName; // Save the user's name
+        });
+      } else {
+        print('No user information found');
+      }
+    } catch (e) {
+      print('Error fetching user name: $e');
     }
   }
 
@@ -185,22 +181,18 @@ class _CoursesScreenState extends State<CoursesScreen> {
         Cinfo.addAll(infoData['faqs'] as List<dynamic>);
       }
 
-      // Now fetch the review field to extract the emails
-      DocumentSnapshot reviewDoc =
-          await courseDocRef.collection('courseinfo').doc('info').get();
+      // Now fetch the review documents to extract the email (doc id)
+      QuerySnapshot reviewSnapshot =
+          await courseDocRef.collection('reviews').get();
 
-      // Check if the review document exists
-      if (reviewDoc.exists && reviewDoc.data() != null) {
-        Map<String, dynamic> reviewData =
-            reviewDoc.data() as Map<String, dynamic>;
+      // Clear rList before adding new emails
+      rList.clear();
 
-        // Check if the 'review' field exists
-        if (reviewData.containsKey('review')) {
-          Map<String, dynamic> reviewMap =
-              reviewData['review'] as Map<String, dynamic>;
-          rList = reviewMap.keys.toList(); // Store email keys in rList
-        }
+      // Loop through the review documents and add their doc IDs (which are emails)
+      for (var doc in reviewSnapshot.docs) {
+        rList.add(doc.id); // doc.id is the email
       }
+      print(rList);
 
       // Return both modules and course info (without emails)
       return {
@@ -231,11 +223,14 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
       // Initialize a map to hold the reviews
       Map<String, dynamic> reviewMap = {};
-
+      // rList.clear();
       // Loop through the review documents and add them to the reviewMap
       for (var doc in reviewSnapshot.docs) {
         if (doc.exists && doc.data() != null) {
-          reviewMap[doc['email']] = {
+          //  rList.add(doc.id);
+          reviewMap[doc.id] = {
+            'username': doc[
+                'username'], // Assuming the username field exists in the document
             'review': doc['review'],
             'rating': doc['rating'],
           };
@@ -250,6 +245,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
   }
 
   Future<void> postReview(String reviewText, double rating) async {
+    print('this is form post $rList');
     if (user != null && reviewText.isNotEmpty) {
       try {
         final String email = user!.email!;
@@ -264,7 +260,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
         // Save the review with email, reviewText, and rating
         await reviewCollection.doc(email).set({
-          'email': email,
+          'username': username,
           'review': reviewText,
           'rating': rating, // Save the rating
         });
@@ -344,6 +340,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
   Widget _Faqs(List<Map<String, dynamic>> userFaqs, int displayedFaqsCount) {
     final width = MediaQuery.of(context).size.width;
+    print(username);
     return Padding(
       padding: EdgeInsets.only(
         // left: width * 0.05,
@@ -598,47 +595,29 @@ class _CoursesScreenState extends State<CoursesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Fetch course details and reviews
     getCourseDetails(widget.courseName);
 
+    // Log rList and reviwed for debugging purposes
     print(rList);
     final width = MediaQuery.of(context).size.width;
-    String c = widget.courseName;
-    bool isEnrolled =
-        usersCourses.contains(c.toLowerCase().replaceAll(" ", ''));
+    //String c = widget.courseName;
+
+    // Determine if the user has reviewed the course
     bool reviwed = rList.contains(email);
     print(reviwed);
+
     return Scaffold(
       backgroundColor: Colors.white,
       appBar: AppBar(
         backgroundColor: Colors.orange,
         title: Text(widget.courseName),
       ),
-      bottomNavigationBar: GestureDetector(
-        onTap: () async {
-          await ac.saveCourseToUserCollection(c);
-          setState(() {
-            getUserCourses();
-          });
-        },
-        child: Container(
-          height: 60,
-          decoration: const BoxDecoration(color: Colors.orange),
-          child: Center(
-            child: Text(
-              (isEnrolled) ? "Enrolled" : 'Enroll',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ),
-      ),
       body: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // FutureBuilder for course details (modules, description, etc.)
             FutureBuilder<Map<String, dynamic>>(
               future: getCourseDetails(widget.courseName),
               builder: (context, snapshot) {
@@ -649,6 +628,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     child: Text('Error: ${snapshot.error}'),
                   );
                 } else if (snapshot.hasData) {
+                  // Extract course details (modules, description, etc.)
                   final modules =
                       snapshot.data!['modules'] as List<Map<String, dynamic>>;
                   final info = snapshot.data!['info'] as Map<String, dynamic>;
@@ -657,6 +637,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Course Image
                       if (info.containsKey('courseImage') &&
                           info['courseImage'] != null &&
                           info['courseImage'].toString().isNotEmpty)
@@ -668,7 +649,6 @@ class _CoursesScreenState extends State<CoursesScreen> {
                             placeholder: (context, url) => const Center(
                               child: CircularProgressIndicator(),
                             ),
-                            key: UniqueKey(),
                             errorWidget: (context, url, error) => const Icon(
                               Icons.error,
                               color: Colors.red,
@@ -683,6 +663,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                             style: TextStyle(fontSize: 16, color: Colors.grey),
                           ),
                         ),
+                      // Course Description
                       const Padding(
                         padding: EdgeInsets.only(top: 10, left: 10),
                         child: Text(
@@ -730,6 +711,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                           softWrap: true,
                         ),
                       ),
+                      // Modules List
                       Padding(
                         padding: EdgeInsets.only(left: width * 0.05, top: 20),
                         child: const Text(
@@ -745,7 +727,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                         physics: const NeverScrollableScrollPhysics(),
                         itemCount: isMExpanded
                             ? modules.length
-                            : 2, // Show only one module initially
+                            : 2, // Show only two modules initially
                         itemBuilder: (context, index) {
                           final module = modules[index];
                           String vid = module.containsKey('vid') &&
@@ -758,6 +740,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                           return _buildModules(module, vid, index);
                         },
                       ),
+                      // Show more/less modules button
                       if (modules.length > 2)
                         Padding(
                           padding: EdgeInsets.all(10.0),
@@ -765,14 +748,13 @@ class _CoursesScreenState extends State<CoursesScreen> {
                             onTap: () {
                               setState(() {
                                 isMExpanded =
-                                    !isMExpanded; // Toggle between expanded/collapsed
+                                    !isMExpanded; // Toggle expanded/collapsed state
                               });
                             },
                             child: Container(
                               width: width * 0.94,
                               height: width * 0.15,
                               decoration: BoxDecoration(
-                                // color: Colors.amber,
                                 borderRadius: BorderRadius.circular(
                                     15), // Rounded corners
                                 border: Border.all(
@@ -785,8 +767,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                                       ? 'Show less modules'
                                       : 'Show more modules',
                                   style: const TextStyle(
-                                    color: Colors
-                                        .black, // Adjust text color if needed
+                                    color: Colors.black,
                                     fontWeight: FontWeight.bold,
                                   ),
                                 ),
@@ -801,6 +782,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                 }
               },
             ),
+            // FutureBuilder for FAQs
             FutureBuilder<Map<String, dynamic>>(
               future: getCourseDetails(widget.courseName),
               builder: (context, snapshot) {
@@ -813,7 +795,7 @@ class _CoursesScreenState extends State<CoursesScreen> {
                 } else if (snapshot.hasData) {
                   final info = snapshot.data!['info'] as Map<String, dynamic>;
 
-                  // Extract FAQ details if present
+                  // Extract FAQ details
                   List<Map<String, dynamic>> userFaqs = [];
                   if (info.containsKey('faqs') && info['faqs'] != null) {
                     userFaqs = List<Map<String, dynamic>>.from(
@@ -825,16 +807,13 @@ class _CoursesScreenState extends State<CoursesScreen> {
                     );
                   }
 
-                  // Determine number of FAQs to show based on the toggle state
                   final displayedFaqsCount =
                       isFaqExpanded ? userFaqs.length : 2;
 
                   return Column(
                     children: [
-                      // Return the FAQ widget with the userFaqs list
-                      _Faqs(userFaqs, displayedFaqsCount),
-
-                      // Show toggle button if FAQs are more than 3
+                      _Faqs(userFaqs, displayedFaqsCount), // FAQ Widget
+                      // Show more/less FAQs button
                       if (userFaqs.length > 2)
                         Padding(
                           padding: EdgeInsets.all(10.0),
@@ -842,14 +821,13 @@ class _CoursesScreenState extends State<CoursesScreen> {
                             onTap: () {
                               setState(() {
                                 isFaqExpanded =
-                                    !isFaqExpanded; // Toggle between expanded/collapsed
+                                    !isFaqExpanded; // Toggle expanded/collapsed state
                               });
                             },
                             child: Container(
                               width: width * 0.93,
                               height: width * 0.15,
                               decoration: BoxDecoration(
-                                // color: Colors.amber,
                                 borderRadius: BorderRadius.circular(15),
                                 border:
                                     Border.all(color: Colors.black, width: 1),
@@ -878,10 +856,10 @@ class _CoursesScreenState extends State<CoursesScreen> {
                 }
               },
             ),
+            // Reviews Section: Show reviews if user has reviewed, otherwise show review input
             (reviwed)
                 ? FutureBuilder<Map<String, dynamic>>(
-                    future: getReviews(widget
-                        .courseName), // Use the new function to get reviews
+                    future: getReviews(widget.courseName),
                     builder: (context, snapshot) {
                       if (snapshot.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator());
@@ -890,32 +868,53 @@ class _CoursesScreenState extends State<CoursesScreen> {
                           child: Text('Error: ${snapshot.error}'),
                         );
                       } else if (snapshot.hasData) {
-                        // Extract review details if present
+                        // Extract review details
                         List<Map<String, dynamic>> userReview = [];
                         if (snapshot.data != null) {
                           userReview = snapshot.data!.entries.map((entry) {
                             return {
-                              'email': entry.key, // Key is the user's email
-                              'review': entry
-                                  .value['review'], // Value is the review text
-                              'rating': entry.value['rating'], // Include rating
+                              'email': entry.value['username'], // User's email
+                              'review': entry.value['review'], // Review text
+                              'rating': entry.value['rating'], // Rating
                             };
                           }).toList();
                         }
 
-                        // Return the review widget with the userReview list
                         return _review(
-                            userReview); // Pass userReview to the _review method
+                            userReview); // Pass user reviews to _review widget
                       } else {
                         return const Center(
-                          child: Text('No reviews available'),
-                        );
+                            child: Text('No reviews available'));
                       }
                     },
                   )
-                : _writeReviewSection()
+                : _writeReviewSection(), // Show write review section if not reviewed
           ],
         ),
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // Passing username and email to Userpostupload screen
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => UserRaiseTocken(
+                username: username,
+                courseName: widget.courseName,
+                email: email!,
+              ),
+            ),
+          );
+        },
+        label: const Text(
+          'your Tockens',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        icon: const Icon(Icons.question_mark),
+        backgroundColor: Colors.orange,
       ),
     );
   }
