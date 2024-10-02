@@ -1,19 +1,24 @@
+import 'dart:io';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'package:uuid/uuid.dart';
 import 'package:flutter/services.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:uuid/uuid.dart';
 
-class UploadPostPage extends StatefulWidget {
-  const UploadPostPage({Key? key}) : super(key: key);
+class Userpostupload extends StatefulWidget {
+  final String username; // Use final
+  final String email; // Use final
+  const Userpostupload({Key? key, required this.username, required this.email})
+      : super(key: key);
 
   @override
-  _UploadPostPageState createState() => _UploadPostPageState();
+  State<Userpostupload> createState() => _UserpostuploadState();
 }
 
-class _UploadPostPageState extends State<UploadPostPage> {
+class _UserpostuploadState extends State<Userpostupload> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
@@ -21,6 +26,33 @@ class _UploadPostPageState extends State<UploadPostPage> {
   File? _image;
   bool _isLoading = false;
   String? _selectedTag; // Holds the selected tag
+
+  final User? user = FirebaseAuth.instance.currentUser;
+  String desig = '';
+  @override
+  void initState() {
+    super.initState();
+    getUsername();
+  }
+
+  Future<void> getUsername() async {
+    try {
+      var userDocument = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user!.email)
+          .collection('userinfo')
+          .doc('userinfo')
+          .get();
+
+      if (userDocument.exists) {
+        setState(() {
+          desig = userDocument.get('role');
+        });
+      }
+    } catch (e) {
+      print("Error getting username: $e");
+    }
+  }
 
   Future<void> _pickImage() async {
     final pickedFile =
@@ -111,8 +143,8 @@ class _UploadPostPageState extends State<UploadPostPage> {
             'likes': 0,
             'comments': [],
             'imageUrl': imageUrl,
-            'user': "Happy School",
-            'designation': "Admin",
+            'user': widget.username,
+            'designation': desig,
           });
 
           // Show success message

@@ -73,39 +73,40 @@ class _UserCoursesState extends State<UserCourses> {
     }
   }
 
-  Future<List<String>> getCourseDetailsInfo() async {
+  Future<Map<String, dynamic>?> getUserInfo() async {
     try {
       // Get the currently authenticated user
       final User? user = FirebaseAuth.instance.currentUser;
 
       if (user == null) {
         // Handle the case where the user is not logged in
-        return [];
+        return null;
       }
 
       // Get the user's email
       final String email = user.email!;
 
       // Reference the Firestore document using the email
-      final DocumentReference courseDocRef =
-          _firestore.collection('Users').doc(email);
+      final DocumentReference userDocRef = _firestore
+          .collection('Users')
+          .doc(email)
+          .collection('userinfo')
+          .doc('userinfo');
 
-      final QuerySnapshot infoSnapshot =
-          await courseDocRef.collection('courseNames').get();
+      // Fetch the user's document
+      final DocumentSnapshot userDocSnapshot = await userDocRef.get();
 
-      if (infoSnapshot.docs.isNotEmpty) {
-        return infoSnapshot.docs.map((doc) {
-          // Safely converting the data
-          Map<String, dynamic> data =
-              Map<String, dynamic>.from(doc.data() as Map<dynamic, dynamic>);
-          return data['courseName']?.toString() ?? '';
-        }).toList();
+      if (userDocSnapshot.exists) {
+        // Safely converting the document data
+        return userDocSnapshot.data() as Map<String, dynamic>?;
       } else {
-        return [];
+        // If no user data exists
+        print('No user information found');
+        return null;
       }
     } catch (e) {
-      print('Error: $e');
-      return [];
+      print('Error fetching user info: $e');
+      return null;
     }
   }
 
@@ -184,8 +185,9 @@ class _UserCoursesState extends State<UserCourses> {
                 ),
               ),
             ),
-            FutureBuilder<List<String>>(
-              future: getCourseDetailsInfo(),
+            FutureBuilder<Map<String, dynamic>?>(
+              future:
+                  getUserInfo(), // Fetch user info, which includes the courses
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -195,13 +197,23 @@ class _UserCoursesState extends State<UserCourses> {
                   return Center(
                     child: Text('Error: ${snapshot.error}'),
                   );
-                } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                } else if (!snapshot.hasData ||
+                    snapshot.data == null ||
+                    !snapshot.data!.containsKey('courses')) {
+                  return const Center(
+                    child: Text('No courses found.'),
+                  );
+                } else {
+                  final courses = List<String>.from(snapshot
+                      .data!['courses']); // Fetching courses from user info
+
                   return SizedBox(
                     height: width * 2, // Set a fixed height for the list
                     child: ListView.builder(
-                      itemCount: snapshot.data!.length,
+                      itemCount:
+                          courses.length, // Use courses.length for item count
                       itemBuilder: (context, index) {
-                        final courseName = snapshot.data![index];
+                        final courseName = courses[index];
                         return Card(
                           child: GestureDetector(
                             onTap: () {
@@ -233,21 +245,24 @@ class _UserCoursesState extends State<UserCourses> {
                                   ],
                                 ),
                                 child: FutureBuilder<Map<String, dynamic>>(
-                                  future: getCourseDetails(courseName),
-                                  builder: (context, snapshot) {
-                                    if (snapshot.connectionState ==
+                                  future: getCourseDetails(
+                                      courseName), // Fetch course details
+                                  builder: (context, courseSnapshot) {
+                                    if (courseSnapshot.connectionState ==
                                         ConnectionState.waiting) {
                                       return const Center(
                                         child: CircularProgressIndicator(),
                                       );
-                                    } else if (snapshot.hasError) {
+                                    } else if (courseSnapshot.hasError) {
                                       return Center(
-                                        child: Text('Error: ${snapshot.error}'),
+                                        child: Text(
+                                            'Error: ${courseSnapshot.error}'),
                                       );
-                                    } else if (snapshot.hasData) {
-                                      final modules = snapshot.data!['modules']
-                                          as List<Map<String, dynamic>>;
-                                      final info = snapshot.data!['info']
+                                    } else if (courseSnapshot.hasData) {
+                                      final modules =
+                                          courseSnapshot.data!['modules']
+                                              as List<Map<String, dynamic>>;
+                                      final info = courseSnapshot.data!['info']
                                           as Map<String, dynamic>;
 
                                       return Column(
@@ -310,7 +325,7 @@ class _UserCoursesState extends State<UserCourses> {
                                                       padding: EdgeInsets.only(
                                                           left: 5),
                                                       child: Text(
-                                                        "2:30:44",
+                                                        "2:30:44", // Placeholder for duration
                                                         style: TextStyle(
                                                           fontSize: 10,
                                                           fontWeight:
@@ -339,10 +354,6 @@ class _UserCoursesState extends State<UserCourses> {
                         );
                       },
                     ),
-                  );
-                } else {
-                  return const Center(
-                    child: Text('No courses found.'),
                   );
                 }
               },

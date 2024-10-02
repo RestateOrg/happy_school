@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:happy_school/user/MainHome.dart';
@@ -44,13 +46,30 @@ class _UserhomeState extends State<Userhome> {
         preferredSize: const Size.fromHeight(70.0),
         child: AppBar(
           backgroundColor: Colors.white,
+          automaticallyImplyLeading: false,
+          leading: Padding(
+            padding: EdgeInsets.only(left: 13, top: 13),
+            child: Builder(
+              builder: (BuildContext context) {
+                return GestureDetector(
+                  onTap: () {
+                    Scaffold.of(context).openDrawer(); // Open left drawer
+                  },
+                  child: FaIcon(
+                    FontAwesomeIcons.bars,
+                    color: Colors.black,
+                  ),
+                );
+              },
+            ),
+          ),
           title: Padding(
             padding: EdgeInsets.only(top: 10),
             child: Row(
               children: [
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
+                  children: const [
                     Text(
                       "Hi,",
                       style: TextStyle(
@@ -65,10 +84,6 @@ class _UserhomeState extends State<Userhome> {
                       ),
                     ),
                   ],
-                ),
-                Spacer(),
-                Container(
-                  width: 60,
                 ),
                 Spacer(),
                 Container(
@@ -97,19 +112,19 @@ class _UserhomeState extends State<Userhome> {
                     ),
                   ),
                 ),
-                Spacer(),
-                FaIcon(
+                const Spacer(),
+                const FaIcon(
                   FontAwesomeIcons.solidBell,
                   size: 23,
                 ),
-                Spacer(),
-                Icon(Icons.person),
-                //Spacer()
+                const Spacer(),
+                const Icon(Icons.person),
               ],
             ),
           ),
         ),
       ),
+      drawer: CustomDrawer(handleNavigation: _onItemTapped), // Left drawer
       body: PageView(
         controller: _pageController,
         physics: const AlwaysScrollableScrollPhysics(),
@@ -138,7 +153,7 @@ class _UserhomeState extends State<Userhome> {
           ),
           BottomNavigationBarItem(
             icon: Icon(Icons.bar_chart),
-            label: 'leaderboard',
+            label: 'Leaderboard',
           ),
           BottomNavigationBarItem(
             icon: FaIcon(FontAwesomeIcons.globe),
@@ -148,6 +163,208 @@ class _UserhomeState extends State<Userhome> {
         currentIndex: _selectedIndex.clamp(0, 3),
         selectedItemColor: Colors.orange[600],
         onTap: _onItemTapped,
+      ),
+    );
+  }
+
+  void handleNavigation(int index) {
+    setState(() {
+      _selectedIndex = index;
+      _pageController.jumpToPage(index);
+    });
+  }
+}
+
+class CustomDrawer extends StatelessWidget {
+  final Function(int) handleNavigation;
+
+  CustomDrawer({required this.handleNavigation});
+  final User? user = FirebaseAuth.instance.currentUser;
+
+  Future<String?> getUsername() async {
+    String? username;
+    try {
+      var userDocument = await FirebaseFirestore.instance
+          .collection('Users')
+          .doc(user!.email)
+          .collection('userinfo')
+          .doc('userinfo')
+          .get();
+
+      if (userDocument.exists) {
+        username = userDocument.get('Name');
+      }
+    } catch (e) {
+      print("Error getting username: $e");
+    }
+    return username;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.of(context).size.width;
+
+    return Drawer(
+      width: width * 0.80,
+      child: FutureBuilder<String?>(
+        future: getUsername(),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Container();
+          } else if (snapshot.hasError) {
+            return Text("Error: ${snapshot.error}");
+          } else {
+            return ListView(
+              padding: EdgeInsets.zero,
+              children: [
+                DrawerHeader(
+                  decoration: const BoxDecoration(
+                    color: Colors.orange,
+                  ),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          GestureDetector(
+                            onTap: () {},
+                            child: const Icon(
+                              Icons.account_circle,
+                              color: Colors.black,
+                              size: 60,
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Welcome,',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontFamily: 'Roboto',
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              Text(
+                                '  ${snapshot.data}',
+                                style: const TextStyle(
+                                  color: Colors.black,
+                                  fontSize: 14,
+                                  fontFamily: 'Roboto',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                // Now placing the Home ListTile just below the orange section
+                Column(
+                  children: [
+                    ListTile(
+                      leading: FaIcon(
+                        FontAwesomeIcons.houseChimney,
+                        color: Colors.black,
+                      ),
+                      title: Text(
+                        'Home',
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onTap: () {
+                        handleNavigation(
+                            0); // Navigate to the first page (Mainhome)
+                        Navigator.pop(context);
+                      },
+                    ),
+                    Divider(
+                      color: Colors.black,
+                      thickness: 0.5,
+                      indent: 0,
+                      endIndent: 0,
+                    ),
+                    ListTile(
+                      leading: FaIcon(
+                        FontAwesomeIcons.clipboardList,
+                        color: Colors.black,
+                      ),
+                      title: Text(
+                        'User courses',
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onTap: () {
+                        handleNavigation(1);
+                        Navigator.pop(context);
+                      },
+                    ),
+                    Divider(
+                      color: Colors.black,
+                      thickness: 0.5,
+                      indent: 0,
+                      endIndent: 0,
+                    ),
+                    ListTile(
+                      leading: FaIcon(
+                        Icons.bar_chart,
+                        color: Colors.black,
+                      ),
+                      title: Text(
+                        'Leaderboard',
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onTap: () {
+                        handleNavigation(2);
+                        Navigator.pop(context);
+                      },
+                    ),
+                    Divider(
+                      color: Colors.black,
+                      thickness: 0.5,
+                      indent: 0,
+                      endIndent: 0,
+                    ),
+                    ListTile(
+                      leading: FaIcon(
+                        FontAwesomeIcons.globe,
+                        color: Colors.black,
+                      ),
+                      title: Text(
+                        'Feed',
+                        style: TextStyle(
+                          fontFamily: 'Roboto',
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      onTap: () {
+                        handleNavigation(3);
+                        Navigator.pop(context);
+                      },
+                    ),
+                    Divider(
+                      color: Colors.black,
+                      thickness: 0.5,
+                      indent: 0,
+                      endIndent: 0,
+                    ),
+                  ],
+                )
+              ],
+            );
+          }
+        },
       ),
     );
   }
