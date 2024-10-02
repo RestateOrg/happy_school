@@ -124,7 +124,7 @@ class _UserhomeState extends State<Userhome> {
           ),
         ),
       ),
-      drawer: CustomDrawer(handleNavigation: _onItemTapped), // Added drawer
+      drawer: CustomDrawer(handleNavigation: _onItemTapped), // Left drawer
       body: PageView(
         controller: _pageController,
         physics: const AlwaysScrollableScrollPhysics(),
@@ -164,29 +164,13 @@ class _UserhomeState extends State<Userhome> {
         selectedItemColor: Colors.orange[600],
         onTap: _onItemTapped,
       ),
-      endDrawer: CustomDrawer(handleNavigation: handleNavigation),
     );
   }
 
   void handleNavigation(int index) {
     setState(() {
       _selectedIndex = index;
-      switch (index) {
-        case 0:
-          _pageController.jumpToPage(0);
-          break;
-        case 1:
-          _pageController.jumpToPage(1);
-          break;
-        case 2:
-          _pageController.jumpToPage(2);
-          break;
-        case 3:
-          _pageController.jumpToPage(3);
-          break;
-        default:
-          break;
-      }
+      _pageController.jumpToPage(index);
     });
   }
 }
@@ -296,7 +280,7 @@ class CustomDrawer extends StatelessWidget {
                       ),
                       onTap: () {
                         handleNavigation(
-                            0); // Navigate to the first page (MainBuilderHome)
+                            0); // Navigate to the first page (Mainhome)
                         Navigator.pop(context);
                       },
                     ),
@@ -319,8 +303,7 @@ class CustomDrawer extends StatelessWidget {
                         ),
                       ),
                       onTap: () {
-                        handleNavigation(
-                            1); // Navigate to the first page (MainBuilderHome)
+                        handleNavigation(1);
                         Navigator.pop(context);
                       },
                     ),
@@ -336,15 +319,14 @@ class CustomDrawer extends StatelessWidget {
                         color: Colors.black,
                       ),
                       title: Text(
-                        'leader board',
+                        'Leaderboard',
                         style: TextStyle(
                           fontFamily: 'Roboto',
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       onTap: () {
-                        handleNavigation(
-                            2); // Navigate to the first page (MainBuilderHome)
+                        handleNavigation(2);
                         Navigator.pop(context);
                       },
                     ),
@@ -367,8 +349,7 @@ class CustomDrawer extends StatelessWidget {
                         ),
                       ),
                       onTap: () {
-                        handleNavigation(
-                            3); // Navigate to the first page (MainBuilderHome)
+                        handleNavigation(3);
                         Navigator.pop(context);
                       },
                     ),
@@ -380,7 +361,6 @@ class CustomDrawer extends StatelessWidget {
                     ),
                   ],
                 )
-                // Add other list items as needed
               ],
             );
           }
