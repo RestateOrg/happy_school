@@ -73,40 +73,53 @@ class _UserCoursesState extends State<UserCourses> {
     }
   }
 
-  Future<List<String>> getCourseDetailsInfo() async {
+  Future<List<String>> getUserCourses() async {
+    List<String> usersCourses = [];
     try {
       // Get the currently authenticated user
       final User? user = FirebaseAuth.instance.currentUser;
 
       if (user == null) {
         // Handle the case where the user is not logged in
-        return [];
+        return usersCourses; // Return empty list if user is not logged in
       }
 
       // Get the user's email
       final String email = user.email!;
 
       // Reference the Firestore document using the email
-      final DocumentReference courseDocRef =
-          _firestore.collection('Users').doc(email);
+      final DocumentReference userInfoDocRef = _firestore
+          .collection('Users')
+          .doc(email)
+          .collection('userinfo')
+          .doc('userinfo');
 
-      final QuerySnapshot infoSnapshot =
-          await courseDocRef.collection('courseNames').get();
+      // Fetch the document containing user information
+      final DocumentSnapshot userInfoSnapshot = await userInfoDocRef.get();
 
-      if (infoSnapshot.docs.isNotEmpty) {
-        return infoSnapshot.docs.map((doc) {
-          // Safely converting the data
-          Map<String, dynamic> data =
-              Map<String, dynamic>.from(doc.data() as Map<dynamic, dynamic>);
-          return data['courseName']?.toString() ?? '';
-        }).toList();
+      // Check if the document exists and contains the 'courses' field
+      if (userInfoSnapshot.exists && userInfoSnapshot.data() != null) {
+        Map<String, dynamic> data =
+            userInfoSnapshot.data() as Map<String, dynamic>;
+
+        if (data.containsKey('courses')) {
+          List<dynamic> courses = data['courses'] ?? [];
+
+          // Add fetched courses to the usersCourses list
+          usersCourses = courses.map((course) {
+            return course.toString();
+          }).toList();
+        } else {
+          print('No courses found in userinfo.');
+        }
       } else {
-        return [];
+        print('userinfo document does not exist.');
       }
     } catch (e) {
       print('Error: $e');
-      return [];
     }
+
+    return usersCourses;
   }
 
   @override
@@ -185,7 +198,7 @@ class _UserCoursesState extends State<UserCourses> {
               ),
             ),
             FutureBuilder<List<String>>(
-              future: getCourseDetailsInfo(),
+              future: getUserCourses(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -342,7 +355,7 @@ class _UserCoursesState extends State<UserCourses> {
                   );
                 }
               },
-            ),
+            )
           ],
         ),
       ),

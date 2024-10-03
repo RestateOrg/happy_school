@@ -32,8 +32,7 @@ class _MainhomeState extends State<Mainhome> {
 
   @override
   void initState() {
-    super.initState();
-    getUserCourses(); // Call the function to fetch and store courses
+    super.initState(); // Call the function to fetch and store courses
     getChallanges();
     _pageController = PageController();
   }
@@ -43,53 +42,6 @@ class _MainhomeState extends State<Mainhome> {
     // Dispose the PageController to prevent memory leaks
     _pageController.dispose();
     super.dispose();
-  }
-
-  // Fetch and store the course names in usersCourses list
-  Future<void> getUserCourses() async {
-    try {
-      // Get the currently authenticated user
-      final User? user = FirebaseAuth.instance.currentUser;
-
-      if (user == null) {
-        // Handle the case where the user is not logged in
-        return;
-      }
-
-      // Get the user's email
-      final String email = user.email!;
-
-      // Reference the Firestore document using the email
-      final DocumentReference courseDocRef =
-          _firestore.collection('Users').doc(email);
-
-      // Fetch course names
-      final QuerySnapshot infoSnapshot =
-          await courseDocRef.collection('courseNames').get();
-
-      // Check if there are any documents
-      if (infoSnapshot.docs.isNotEmpty) {
-        // Clear the list to avoid duplications
-        setState(() {
-          usersCourses.clear();
-          // Add fetched courses to the usersCourses list
-          usersCourses.addAll(
-            infoSnapshot.docs.map((doc) {
-              Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
-              return data['courseName']
-                      ?.toString()
-                      .toLowerCase()
-                      .replaceAll(" ", "") ??
-                  '';
-            }).toList(),
-          );
-        });
-      } else {
-        print('No courses found for this user.');
-      }
-    } catch (e) {
-      print('Error: $e');
-    }
   }
 
   // ignore: non_constant_identifier_names
@@ -396,9 +348,6 @@ class _MainhomeState extends State<Mainhome> {
   }
 
   Widget _courseItems(Map<String, dynamic> course, String courseImage) {
-    String courseName = course['courseName'];
-    bool isEnrolled =
-        usersCourses.contains(courseName.toLowerCase().replaceAll(" ", ''));
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Container(
@@ -470,35 +419,6 @@ class _MainhomeState extends State<Mainhome> {
                     ),
                   ),
                 ],
-              ),
-            ),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Padding(
-                padding: const EdgeInsets.only(right: 8.0),
-                child: GestureDetector(
-                  onTap: () async {
-                    setState(() {
-                      getUserCourses();
-                    });
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                        vertical: 8, horizontal: 16), // Adjusted padding
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(20),
-                      color: HexColor("#FF6B00"),
-                    ),
-                    child: Text(
-                      (isEnrolled) ? "Enrolled" : 'Enroll',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ),
               ),
             ),
           ],
