@@ -205,6 +205,7 @@ class CustomDrawer extends StatelessWidget {
     final width = MediaQuery.of(context).size.width;
 
     return Drawer(
+      backgroundColor: Colors.white,
       width: width * 0.80,
       child: FutureBuilder<String?>(
         future: getUsername(),

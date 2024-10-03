@@ -24,6 +24,7 @@ class _MainhomeState extends State<Mainhome> {
   late PageController _pageController;
   late int currentIndex = 0;
   late Timer timer;
+  double progress = 0.5;
 
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -288,9 +289,9 @@ class _MainhomeState extends State<Mainhome> {
       // Conditionally include days in the string if daysLeft is greater than 0
       if (daysLeft > 0) {
         timeLeftText =
-            '$daysLeft days, $hoursLeft hours, $minutesLeft minutes left';
+            'In $daysLeft days, $hoursLeft hours, $minutesLeft minutes';
       } else {
-        timeLeftText = '$hoursLeft hours, $minutesLeft minutes left';
+        timeLeftText = 'In $hoursLeft hours, $minutesLeft minutes';
       }
     } else {
       timeLeftText = 'No deadline set';
@@ -317,8 +318,11 @@ class _MainhomeState extends State<Mainhome> {
           children: [
             Container(
               width: 200,
-              height: 90,
-              color: Colors.black12,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: challengeInfo[0]['ChallengeImage'].isNotEmpty
                   ? CachedNetworkImage(
                       imageUrl: challengeInfo[0]['ChallengeImage'],
@@ -339,40 +343,49 @@ class _MainhomeState extends State<Mainhome> {
                       padding: EdgeInsets.only(left: 5),
                       child: Text(
                         challengeInfo[0]['ChallengeName'],
+                        maxLines: 1,
                         style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                    Spacer(),
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: GestureDetector(
-                        onTap: () async {},
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              vertical: 5, horizontal: 10), // Adjusted padding
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(20),
-                            color: HexColor("#FF6B00"),
-                          ),
-                          child: Text(
-                            'Enroll',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            overflow: TextOverflow.ellipsis),
                       ),
                     ),
                   ],
                 ),
-                Text(
-                  timeLeftText,
-                  style: TextStyle(fontSize: 10),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Padding(
+                    padding: EdgeInsets.only(left: 5),
+                    child: Text(
+                      timeLeftText,
+                      style: TextStyle(fontSize: 10),
+                    ),
+                  ),
+                ),
+                Align(
+                  alignment: Alignment.bottomRight,
+                  child: Padding(
+                    padding: EdgeInsets.only(right: 5),
+                    child: GestureDetector(
+                      onTap: () async {},
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            vertical: 8, horizontal: 16), // Adjusted padding
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(20),
+                          color: HexColor("#FF6B00"),
+                        ),
+                        child: Text(
+                          'Continue',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 )
               ],
             ),
@@ -389,7 +402,7 @@ class _MainhomeState extends State<Mainhome> {
     return Padding(
       padding: const EdgeInsets.all(8.0),
       child: Container(
-        width: 200,
+        width: 230,
         padding: const EdgeInsets.all(8.0),
         decoration: BoxDecoration(
           color: Colors.white,
@@ -407,8 +420,11 @@ class _MainhomeState extends State<Mainhome> {
           children: [
             Container(
               width: 200,
-              height: 90,
-              color: Colors.black12,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.black12,
+                borderRadius: BorderRadius.circular(10),
+              ),
               child: courseImage.isNotEmpty
                   ? CachedNetworkImage(
                       imageUrl: courseImage,
@@ -431,13 +447,58 @@ class _MainhomeState extends State<Mainhome> {
                     child: Text(
                       course['courseName'],
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   Spacer(),
                 ],
+              ),
+            ),
+            Container(
+              width: 200,
+              child: Row(
+                children: [
+                  Padding(
+                    padding: EdgeInsets.only(left: 10),
+                    child: Text(
+                      course['courseDescription']?.toString() ?? '',
+                      style: TextStyle(
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Align(
+              alignment: Alignment.centerRight,
+              child: Padding(
+                padding: const EdgeInsets.only(right: 8.0),
+                child: GestureDetector(
+                  onTap: () async {
+                    setState(() {
+                      getUserCourses();
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        vertical: 8, horizontal: 16), // Adjusted padding
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(20),
+                      color: HexColor("#FF6B00"),
+                    ),
+                    child: Text(
+                      (isEnrolled) ? "Enrolled" : 'Enroll',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ),
               ),
             ),
           ],
@@ -455,205 +516,209 @@ class _MainhomeState extends State<Mainhome> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: EdgeInsets.only(top: 5, left: 7),
-              child: Container(
-                height: 80,
-                width: width * 0.95,
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(20),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black12,
-                      spreadRadius: 1,
-                      blurRadius: 2,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    Padding(
-                      padding: EdgeInsets.only(left: 10),
-                      child: FaIcon(
-                        FontAwesomeIcons.medal,
-                        color: Colors.grey,
-                        size: 35,
+            Align(
+              alignment: Alignment.topCenter,
+              child: Padding(
+                padding: EdgeInsets.only(top: 5),
+                child: Container(
+                  height: 80,
+                  width: width * 0.95,
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black12,
+                        spreadRadius: 1,
+                        blurRadius: 2,
+                        offset: const Offset(0, 2),
                       ),
-                    ),
-                    Padding(
-                      padding: EdgeInsets.only(top: 20, left: 5),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            "Silver",
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Padding(
+                        padding: EdgeInsets.only(left: 20),
+                        child: FaIcon(
+                          FontAwesomeIcons.medal,
+                          color: Colors.grey,
+                          size: 35,
+                        ),
+                      ),
+                      Padding(
+                        padding: EdgeInsets.only(top: 15, left: 10),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Silver",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 17),
                             ),
-                          ),
-                          Text("1000 more coins for the Gold"),
-                          Row(
-                            children: [
-                              Container(
-                                width: 150,
-                                height: 5,
+                            Text("1000 more coins for the Gold"),
+                            Container(
+                              width: 200, // Full width
+                              child: LinearProgressIndicator(
+                                value: progress,
+                                backgroundColor: Colors.grey[300],
                                 color: Colors.orangeAccent,
                               ),
-                              Container(
-                                width: 60,
-                                height: 5,
-                                decoration: BoxDecoration(
-                                  border: Border.all(color: Colors.grey),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Spacer(),
-                    FaIcon(
-                      FontAwesomeIcons.chevronRight,
-                      size: 15,
-                    ),
-                    Spacer(),
-                  ],
+                      Spacer(),
+                      FaIcon(
+                        FontAwesomeIcons.chevronRight,
+                        size: 15,
+                      ),
+                      Spacer(),
+                    ],
+                  ),
                 ),
               ),
             ),
             Padding(
-              padding: EdgeInsets.only(left: 10, top: 10),
-              child: Text(
-                "Announcements",
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                ),
-              ),
-            ),
-            FutureBuilder<List<Map<String, dynamic>>>(
-              future: getAnnouncements(), // Call your getAnnouncements function
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
-                } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
-                  // PageController for PageView
-                  final PageController _pageController = PageController();
-                  int currentIndex = 0;
+              padding: EdgeInsets.only(top: 10),
+              child: FutureBuilder<List<Map<String, dynamic>>>(
+                future:
+                    getAnnouncements(), // Call your getAnnouncements function
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text('Error: ${snapshot.error}'));
+                  } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                    // PageController for PageView
+                    final PageController _pageController = PageController();
+                    int currentIndex = 0;
 
-                  return Column(
-                    children: [
-                      // PageView for showing announcements
-                      Container(
-                        height: 200, // Adjust height as needed
-                        child: PageView.builder(
-                          controller: _pageController,
-                          itemCount: snapshot.data!.length,
-                          onPageChanged: (value) {
-                            currentIndex = value; // Track current page index
-                          },
-                          itemBuilder: (context, index) {
-                            final announcementData = snapshot.data![index];
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => Showannouncements(
-                                        announcementData: announcementData),
-                                  ),
-                                );
-                              },
-                              child: Card(
-                                color: Colors.white,
+                    return Column(
+                      children: [
+                        // PageView for showing announcements
+                        Container(
+                          height: 200, // Adjust height as needed
+                          child: PageView.builder(
+                            controller: _pageController,
+                            itemCount: snapshot.data!.length,
+                            onPageChanged: (value) {
+                              currentIndex = value; // Track current page index
+                            },
+                            itemBuilder: (context, index) {
+                              final announcementData = snapshot.data![index];
+                              return Card(
                                 elevation: 4,
                                 shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(
-                                      12), // Set the height for the image
+                                  borderRadius: BorderRadius.circular(12),
                                 ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Container(
-                                      height: 150,
-                                      width: double.infinity,
-                                      color: Colors.black12,
-                                      child: CachedNetworkImage(
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Stack(
+                                    fit: StackFit.expand,
+                                    children: [
+                                      CachedNetworkImage(
                                         key: UniqueKey(),
-                                        imageUrl: announcementData[
-                                            'imageUrl'], // Assuming 'img' holds the image URL
+                                        imageUrl: announcementData['imageUrl'],
                                         placeholder: (context, url) =>
                                             const Center(
                                                 child:
                                                     CircularProgressIndicator()),
                                         errorWidget: (context, url, error) =>
                                             const Icon(Icons.error),
-
-                                        //fit: BoxFit.cover,
                                       ),
-                                    ),
-                                    Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Text(
-                                        announcementData['title'] ?? 'No Title',
-                                        style: const TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.bold,
+                                      Container(
+                                        color: Colors.black54,
+                                      ),
+                                      Positioned(
+                                        bottom: 10,
+                                        left: 10,
+                                        right: 10,
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              announcementData['title'] ??
+                                                  'No Title',
+                                              style: const TextStyle(
+                                                fontSize:
+                                                    18, // Increase font size for better visibility
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors
+                                                    .white, // White text for contrast
+                                              ),
+                                              textAlign: TextAlign
+                                                  .left, // Left align the title
+                                            ),
+                                            SizedBox(
+                                                height:
+                                                    5), // Add some space between title and description
+                                            Text(
+                                              announcementData['description'] ??
+                                                  'No Description', // Assuming 'description' holds the text
+                                              style: const TextStyle(
+                                                fontSize:
+                                                    14, // Font size for the description
+                                                color: Colors
+                                                    .white, // White text for contrast
+                                              ),
+                                              maxLines: 1, // Limit to one line
+                                              overflow: TextOverflow
+                                                  .ellipsis, // Add ellipsis if the text overflows
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
+                              );
+                            },
+                          ),
                         ),
-                      ),
 
-                      // Dots for indicating the current page
-                      Padding(
-                        padding: const EdgeInsets.only(top: 8.0),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List<Widget>.generate(
-                            snapshot.data!.length,
-                            (index) => Padding(
-                              padding: const EdgeInsets.all(4.0),
-                              child: InkWell(
-                                onTap: () {
-                                  _pageController.animateToPage(
-                                    index,
-                                    duration: const Duration(milliseconds: 300),
-                                    curve: Curves.easeIn,
-                                  );
-                                },
-                                child: CircleAvatar(
-                                  radius: 4,
-                                  backgroundColor: currentIndex == index
-                                      ? Colors.orange
-                                      : Colors.grey,
+                        // Dots for indicating the current page
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: List<Widget>.generate(
+                              snapshot.data!.length,
+                              (index) => Padding(
+                                padding: const EdgeInsets.all(4.0),
+                                child: InkWell(
+                                  onTap: () {
+                                    _pageController.animateToPage(
+                                      index,
+                                      duration:
+                                          const Duration(milliseconds: 300),
+                                      curve: Curves.easeIn,
+                                    );
+                                  },
+                                  child: CircleAvatar(
+                                    radius: 4,
+                                    backgroundColor: currentIndex == index
+                                        ? Colors.orange
+                                        : Colors.grey,
+                                  ),
                                 ),
                               ),
                             ),
                           ),
                         ),
-                      ),
-                    ],
-                  );
-                } else {
-                  return const Center(
-                      child: Text('No announcements available'));
-                }
-              },
+                      ],
+                    );
+                  } else {
+                    return const Center(
+                        child: Text('No announcements available'));
+                  }
+                },
+              ),
             ),
             Padding(
               padding: EdgeInsets.only(left: 10),
               child: Text(
-                "Upcomming Challanges",
+                "Upcoming Challenges",
                 style: TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 20,
@@ -669,7 +734,7 @@ class _MainhomeState extends State<Mainhome> {
                   return Center(child: Text('Error: ${snapshot.error}'));
                 } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                   return Container(
-                    height: 150,
+                    height: 230,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: snapshot.data!.length,
@@ -744,7 +809,7 @@ class _MainhomeState extends State<Mainhome> {
                   );
                 } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                   return Container(
-                    height: 150,
+                    height: 230,
                     child: ListView.builder(
                       scrollDirection: Axis.horizontal,
                       itemCount: snapshot.data!.length,

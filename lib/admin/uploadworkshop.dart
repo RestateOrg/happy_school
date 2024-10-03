@@ -415,6 +415,8 @@ class _UploadWorkshopState extends State<UploadWorkshop> {
         "ChallengeDescription": workshopdescription.text,
         "ChallengeId": uniqueCourseId,
         "ChallengeImage": courseBannerURL,
+        "FromDate": _fromDate != null ? _fromDate!.toIso8601String() : null,
+        "ToDate": _toDate != null ? _toDate!.toIso8601String() : null,
       });
 
       for (var module in modules.entries) {

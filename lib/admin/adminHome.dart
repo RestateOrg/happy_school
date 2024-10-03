@@ -4,7 +4,6 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:happy_school/admin/Adminhomescreen.dart';
 import 'package:happy_school/admin/Announcements.dart';
 import 'package:happy_school/admin/Coursesandworkshops.dart';
 import 'package:happy_school/admin/Feed.dart';
@@ -135,11 +134,10 @@ class _AdminhomeState extends State<Adminhome> {
           handleNavigation(index);
         },
         children: [
-          Adminhomescreen(),
+          Feed(),
           Coursesandworkshops(),
           UploadPage(),
           Schools(),
-          Feed(),
         ],
       ),
       bottomNavigationBar: BottomNavigationBar(
@@ -165,10 +163,6 @@ class _AdminhomeState extends State<Adminhome> {
           BottomNavigationBarItem(
             icon: Icon(Icons.school),
             label: 'Schools',
-          ),
-          BottomNavigationBarItem(
-            icon: FaIcon(FontAwesomeIcons.globe),
-            label: 'Feed',
           ),
         ],
         currentIndex: _selectedIndex,
@@ -339,7 +333,7 @@ class CustomDrawer extends StatelessWidget {
                     color: Colors.black,
                   ),
                   title: Text(
-                    'Orders',
+                    'Courses and Challenges',
                     style: TextStyle(
                       fontFamily: 'Roboto',
                       fontWeight: FontWeight.bold,
@@ -373,6 +367,29 @@ class CustomDrawer extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                             builder: (context) => Announcements()));
+                  },
+                ),
+                Divider(
+                  color: Colors.black,
+                  thickness: 0,
+                  indent: 0,
+                  endIndent: 0,
+                ),
+                ListTile(
+                  leading: Icon(
+                    FontAwesomeIcons.ticket,
+                    color: Colors.black,
+                  ),
+                  title: Text(
+                    'Tickets',
+                    style: TextStyle(
+                      fontFamily: 'Roboto',
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  onTap: () {
+                    handleNavigation(3);
+                    Navigator.pop(context);
                   },
                 ),
                 Divider(

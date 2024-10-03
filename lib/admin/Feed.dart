@@ -590,8 +590,8 @@ class _FeedState extends State<Feed> {
                                     fontWeight: FontWeight.bold, fontSize: 16)),
                             const SizedBox(height: 5),
                             ExpandableText(content: content, maxChars: 35),
-                            const Divider(color: Colors.grey),
-                            Text('Tag: $tag'), // Display the post's tag
+
+                            // Display the post's tag
                             const SizedBox(height: 10),
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,

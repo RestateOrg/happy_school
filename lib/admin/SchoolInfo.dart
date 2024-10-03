@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:happy_school/admin/leaderboard.dart';
 
 class SchoolInfo extends StatefulWidget {
   final String name;
@@ -27,7 +28,8 @@ class _SchoolInfoState extends State<SchoolInfo> {
 
   @override
   void initState() {
-    super.initState(); // Fetch course names when the widget is initialized
+    super.initState();
+    fetchCourseNames(); // Fetch course names when the widget is initialized
   }
 
   // Fetch users for the school with optional filtering based on the search query
@@ -62,7 +64,7 @@ class _SchoolInfoState extends State<SchoolInfo> {
 
   // Fetch course names from Firestore
   // Convert fetchCourseNames to return a Stream<List<String>>
-  Stream<List<String>> fetchCourseNames() async* {
+  Future<void> fetchCourseNames() async {
     try {
       DocumentSnapshot courseNamesDoc = await courseNamesRef.get();
 
@@ -71,21 +73,18 @@ class _SchoolInfoState extends State<SchoolInfo> {
 
         // Check if the data is valid and contains the expected structure
         if (data.isNotEmpty) {
-          courseNames = List<String>.from(data.values);
-          _isChecked = List<bool>.filled(
-              courseNames.length, false); // Initialize _isChecked
-          yield courseNames; // Return the course names as a stream
+          setState(() {
+            courseNames = List<String>.from(data.values);
+            _isChecked = List<bool>.filled(courseNames.length, false);
+          });
         } else {
           print('No course names found.');
-          yield [];
         }
       } else {
         print('Course names document does not exist.');
-        yield [];
       }
     } catch (e) {
       print('Error fetching course names: $e');
-      yield [];
     }
   }
 
@@ -100,27 +99,50 @@ class _SchoolInfoState extends State<SchoolInfo> {
       return;
     }
 
+    WriteBatch batch = FirebaseFirestore.instance.batch(); // Initialize a batch
+
     try {
-      QuerySnapshot snapshot = await usersRef.get();
+      // Step 1: Find the school document based on 'SchoolName'
+      QuerySnapshot schoolSnapshot = await FirebaseFirestore.instance
+          .collection('Schools')
+          .where('SchoolName', isEqualTo: widget.name)
+          .get();
 
-      for (var userDoc in snapshot.docs) {
-        DocumentSnapshot userInfoDoc = await usersRef
-            .doc(userDoc.id)
-            .collection('userinfo')
-            .doc('userinfo')
-            .get();
-
-        if (userInfoDoc.exists && userInfoDoc['school'] == widget.name) {
-          // Use set instead of update to avoid errors if 'userinfo' doesn't exist
-          await usersRef
-              .doc(userDoc.id)
-              .collection('userinfo')
-              .doc('userinfo')
-              .set({'courses': selectedcourses}, SetOptions(merge: true));
-        } else {
-          print('User info document does not exist or school does not match.');
-        }
+      if (schoolSnapshot.docs.isEmpty) {
+        print('No matching school document found.');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No matching school found.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
       }
+
+      // Assuming there's one matching school document
+      DocumentReference schoolRef = schoolSnapshot.docs.first.reference;
+
+      // Step 2: Update 'courses' field in the school document using batch
+      batch.set(
+          schoolRef, {'courses': selectedcourses}, SetOptions(merge: true));
+
+      // Step 3: Query users of the same school to update their info
+      QuerySnapshot userSnapshot = await usersRef
+          .where('school',
+              isEqualTo: widget.name) // Only query users from the same school
+          .get();
+
+      for (var userDoc in userSnapshot.docs) {
+        DocumentReference userInfoRef =
+            usersRef.doc(userDoc.id).collection('userinfo').doc('userinfo');
+
+        // Add the update to the batch
+        batch.set(
+            userInfoRef, {'courses': selectedcourses}, SetOptions(merge: true));
+      }
+
+      // Step 4: Commit the batch operation (one network call)
+      await batch.commit();
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -165,7 +187,26 @@ class _SchoolInfoState extends State<SchoolInfo> {
       body: SingleChildScrollView(
         child: Column(
           children: [
-            // Search bar input
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => Userleaderboard(),
+                      ),
+                    );
+                  },
+                  child: Text(
+                    "Leaderboard",
+                    style: const TextStyle(fontSize: 16, color: Colors.blue),
+                  ),
+                ),
+              ),
+            ),
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: TextField(
@@ -295,56 +336,37 @@ class _SchoolInfoState extends State<SchoolInfo> {
             // Second Container: Courses list with checkboxes
             SizedBox(
               height: 200, // Fixed height for the ListView
-              child: StreamBuilder<List<String>>(
-                stream: fetchCourseNames(), // Call the stream fetching method
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
-
-                  if (snapshot.hasError) {
-                    return const Center(
-                        child: Text('Error fetching course names.'));
-                  }
-
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return const Center(child: Text('No courses available.'));
-                  }
-
-                  courseNames = snapshot.data!;
-                  return ListView.builder(
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: courseNames.length,
-                    itemBuilder: (context, index) {
-                      return Padding(
-                        padding: const EdgeInsets.all(8.0),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            border: Border.all(color: Colors.grey),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: ListTile(
-                            leading: Checkbox(
-                              checkColor: Colors.white,
-                              activeColor: Colors.orange,
-                              value: _isChecked[index],
-                              onChanged: (bool? value) {
-                                setState(() {
-                                  _isChecked[index] = value!;
-                                  if (value) {
-                                    selectedcourses.add(courseNames[index]);
-                                  } else {
-                                    selectedcourses.remove(courseNames[index]);
-                                  }
-                                });
-                              },
-                            ),
-                            title: Text(
-                                courseNames[index]), // Display course names
-                          ),
+              child: ListView.builder(
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: courseNames.length,
+                itemBuilder: (context, index) {
+                  return Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        border: Border.all(color: Colors.grey),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: ListTile(
+                        leading: Checkbox(
+                          checkColor: Colors.white,
+                          activeColor: Colors.orange,
+                          value: _isChecked[index],
+                          onChanged: (bool? value) {
+                            setState(() {
+                              _isChecked[index] = value!;
+                              if (value) {
+                                selectedcourses.add(courseNames[index]);
+                              } else {
+                                selectedcourses.remove(courseNames[index]);
+                              }
+                            });
+                            // Print the checkbox state
+                          },
                         ),
-                      );
-                    },
+                        title: Text(courseNames[index]), // Display course names
+                      ),
+                    ),
                   );
                 },
               ),
