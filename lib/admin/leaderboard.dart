@@ -76,6 +76,10 @@ class _UserleaderboardState extends State<Userleaderboard> {
     final width = MediaQuery.of(context).size.width;
     return Scaffold(
       backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Leaderboard'),
+        backgroundColor: Colors.orange,
+      ),
       body: SingleChildScrollView(
         child: FutureBuilder<List<Map<String, dynamic>>>(
           future: getUsersInfo(),

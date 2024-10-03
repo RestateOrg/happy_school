@@ -73,40 +73,39 @@ class _UserCoursesState extends State<UserCourses> {
     }
   }
 
-  Future<Map<String, dynamic>?> getUserInfo() async {
+  Future<List<String>> getCourseDetailsInfo() async {
     try {
       // Get the currently authenticated user
       final User? user = FirebaseAuth.instance.currentUser;
 
       if (user == null) {
         // Handle the case where the user is not logged in
-        return null;
+        return [];
       }
 
       // Get the user's email
       final String email = user.email!;
 
       // Reference the Firestore document using the email
-      final DocumentReference userDocRef = _firestore
-          .collection('Users')
-          .doc(email)
-          .collection('userinfo')
-          .doc('userinfo');
+      final DocumentReference courseDocRef =
+          _firestore.collection('Users').doc(email);
 
-      // Fetch the user's document
-      final DocumentSnapshot userDocSnapshot = await userDocRef.get();
+      final QuerySnapshot infoSnapshot =
+          await courseDocRef.collection('courseNames').get();
 
-      if (userDocSnapshot.exists) {
-        // Safely converting the document data
-        return userDocSnapshot.data() as Map<String, dynamic>?;
+      if (infoSnapshot.docs.isNotEmpty) {
+        return infoSnapshot.docs.map((doc) {
+          // Safely converting the data
+          Map<String, dynamic> data =
+              Map<String, dynamic>.from(doc.data() as Map<dynamic, dynamic>);
+          return data['courseName']?.toString() ?? '';
+        }).toList();
       } else {
-        // If no user data exists
-        print('No user information found');
-        return null;
+        return [];
       }
     } catch (e) {
-      print('Error fetching user info: $e');
-      return null;
+      print('Error: $e');
+      return [];
     }
   }
 
@@ -185,9 +184,8 @@ class _UserCoursesState extends State<UserCourses> {
                 ),
               ),
             ),
-            FutureBuilder<Map<String, dynamic>?>(
-              future:
-                  getUserInfo(), // Fetch user info, which includes the courses
+            FutureBuilder<List<String>>(
+              future: getCourseDetailsInfo(),
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
@@ -197,163 +195,150 @@ class _UserCoursesState extends State<UserCourses> {
                   return Center(
                     child: Text('Error: ${snapshot.error}'),
                   );
-                } else if (!snapshot.hasData ||
-                    snapshot.data == null ||
-                    !snapshot.data!.containsKey('courses')) {
-                  return const Center(
-                    child: Text('No courses found.'),
-                  );
-                } else {
-                  final courses = List<String>.from(snapshot
-                      .data!['courses']); // Fetching courses from user info
-
+                } else if (snapshot.hasData && snapshot.data!.isNotEmpty) {
                   return SizedBox(
                     height: width * 2, // Set a fixed height for the list
                     child: ListView.builder(
-                      itemCount:
-                          courses.length, // Use courses.length for item count
+                      itemCount: snapshot.data!.length,
                       itemBuilder: (context, index) {
-                        final courseName = courses[index];
-                        return Card(
-                          child: GestureDetector(
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) => CoursesScreen(
-                                    courseName: courseName,
-                                  ),
+                        final courseName = snapshot.data![index];
+                        return GestureDetector(
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => CoursesScreen(
+                                  courseName: courseName,
                                 ),
-                              );
-                            },
-                            child: Padding(
+                              ),
+                            );
+                          },
+                          child: Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Container(
+                              width: width * 0.9,
+                              height: width * 0.67,
                               padding: const EdgeInsets.all(8.0),
-                              child: Container(
-                                width: width * 0.9,
-                                height: width * 0.67,
-                                padding: const EdgeInsets.all(8.0),
-                                decoration: BoxDecoration(
-                                  color: Colors.white,
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.black12,
-                                      spreadRadius: 1,
-                                      blurRadius: 2,
-                                      offset: const Offset(0, 2),
-                                    ),
-                                  ],
-                                ),
-                                child: FutureBuilder<Map<String, dynamic>>(
-                                  future: getCourseDetails(
-                                      courseName), // Fetch course details
-                                  builder: (context, courseSnapshot) {
-                                    if (courseSnapshot.connectionState ==
-                                        ConnectionState.waiting) {
-                                      return const Center(
-                                        child: CircularProgressIndicator(),
-                                      );
-                                    } else if (courseSnapshot.hasError) {
-                                      return Center(
-                                        child: Text(
-                                            'Error: ${courseSnapshot.error}'),
-                                      );
-                                    } else if (courseSnapshot.hasData) {
-                                      final modules =
-                                          courseSnapshot.data!['modules']
-                                              as List<Map<String, dynamic>>;
-                                      final info = courseSnapshot.data!['info']
-                                          as Map<String, dynamic>;
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(10),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black12,
+                                    spreadRadius: 1,
+                                    blurRadius: 2,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: FutureBuilder<Map<String, dynamic>>(
+                                future: getCourseDetails(courseName),
+                                builder: (context, snapshot) {
+                                  if (snapshot.connectionState ==
+                                      ConnectionState.waiting) {
+                                    return const Center(
+                                      child: CircularProgressIndicator(),
+                                    );
+                                  } else if (snapshot.hasError) {
+                                    return Center(
+                                      child: Text('Error: ${snapshot.error}'),
+                                    );
+                                  } else if (snapshot.hasData) {
+                                    final modules = snapshot.data!['modules']
+                                        as List<Map<String, dynamic>>;
+                                    final info = snapshot.data!['info']
+                                        as Map<String, dynamic>;
 
-                                      return Column(
-                                        children: [
-                                          Container(
-                                            width: width * 0.9,
-                                            height: width * 0.45,
-                                            color: Colors.black12,
-                                            child: CachedNetworkImage(
-                                              imageUrl:
-                                                  info['courseImage'] ?? '',
-                                              placeholder: (context, url) =>
-                                                  const Center(),
-                                              key: UniqueKey(),
-                                              errorWidget:
-                                                  (context, url, error) =>
-                                                      const Icon(
-                                                Icons.error,
-                                                color: Colors.red,
-                                              ),
+                                    return Column(
+                                      children: [
+                                        Container(
+                                          width: width * 0.9,
+                                          height: width * 0.45,
+                                          color: Colors.black12,
+                                          child: CachedNetworkImage(
+                                            imageUrl: info['courseImage'] ?? '',
+                                            placeholder: (context, url) =>
+                                                const Center(),
+                                            key: UniqueKey(),
+                                            errorWidget:
+                                                (context, url, error) =>
+                                                    const Icon(
+                                              Icons.error,
+                                              color: Colors.red,
                                             ),
                                           ),
-                                          Container(
-                                            width: width * 0.9,
-                                            height: width * 0.16,
-                                            child: Column(
-                                              crossAxisAlignment:
-                                                  CrossAxisAlignment.start,
-                                              children: [
-                                                Padding(
-                                                  padding:
-                                                      EdgeInsets.only(top: 5),
-                                                  child: Text(
-                                                    courseName,
-                                                    style: TextStyle(
-                                                      fontSize: 20,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                    ),
+                                        ),
+                                        Container(
+                                          width: width * 0.9,
+                                          height: width * 0.16,
+                                          child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Padding(
+                                                padding:
+                                                    EdgeInsets.only(top: 5),
+                                                child: Text(
+                                                  courseName,
+                                                  style: TextStyle(
+                                                    fontSize: 20,
+                                                    fontWeight: FontWeight.bold,
                                                   ),
                                                 ),
-                                                Row(
-                                                  children: [
-                                                    Padding(
-                                                      padding: EdgeInsets.only(
-                                                          top: 2),
-                                                      child: Text(
-                                                        modules.isEmpty
-                                                            ? "No modules"
-                                                            : "${modules.length} module${modules.length > 1 ? 's' : ''}",
-                                                        style: TextStyle(
-                                                          fontSize: 10,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color: Colors.grey,
-                                                        ),
+                                              ),
+                                              Row(
+                                                children: [
+                                                  Padding(
+                                                    padding:
+                                                        EdgeInsets.only(top: 2),
+                                                    child: Text(
+                                                      modules.isEmpty
+                                                          ? "No modules"
+                                                          : "${modules.length} module${modules.length > 1 ? 's' : ''}",
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors.grey,
                                                       ),
                                                     ),
-                                                    Padding(
-                                                      padding: EdgeInsets.only(
-                                                          left: 5),
-                                                      child: Text(
-                                                        "2:30:44", // Placeholder for duration
-                                                        style: TextStyle(
-                                                          fontSize: 10,
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          color: Colors.grey,
-                                                        ),
+                                                  ),
+                                                  Padding(
+                                                    padding: EdgeInsets.only(
+                                                        left: 5),
+                                                    child: Text(
+                                                      "2:30:44",
+                                                      style: TextStyle(
+                                                        fontSize: 10,
+                                                        fontWeight:
+                                                            FontWeight.bold,
+                                                        color: Colors.grey,
                                                       ),
                                                     ),
-                                                  ],
-                                                ),
-                                              ],
-                                            ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ],
                                           ),
-                                        ],
-                                      );
-                                    } else {
-                                      return const Center(
-                                        child: Text('No module details found.'),
-                                      );
-                                    }
-                                  },
-                                ),
+                                        ),
+                                      ],
+                                    );
+                                  } else {
+                                    return const Center(
+                                      child: Text('No module details found.'),
+                                    );
+                                  }
+                                },
                               ),
                             ),
                           ),
                         );
                       },
                     ),
+                  );
+                } else {
+                  return const Center(
+                    child: Text('No courses found.'),
                   );
                 }
               },
